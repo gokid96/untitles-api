@@ -1,0 +1,14 @@
+spring:
+  profiles:
+    active: dev  # 기본값
+
+  application:
+    name: untitles-api
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+server:
+  port: 8070
