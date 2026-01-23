@@ -35,10 +35,3 @@ out/
 
 ### VS Code ###
 .vscode/
-
-### 환경 설정 (민감 정보) ###
-application-dev.yml
-application-prod.yml
-src/main/resources/application-dev.yml
-src/main/resources/application-prod.yml
-src/main/resources/application-dev.yml

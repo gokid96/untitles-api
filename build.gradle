@@ -33,6 +33,13 @@ dependencies {
     implementation platform('software.amazon.awssdk:bom:2.25.0')
     implementation 'software.amazon.awssdk:sesv2'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
+    
+    // XSS 방지를 위한 HTML Sanitizer
+    implementation 'org.owasp.antisamy:antisamy:1.7.5'
+    
+    // Rate Limiting
+    implementation 'com.bucket4j:bucket4j-core:8.10.1'
+    
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.mysql:mysql-connector-j'
     annotationProcessor 'org.projectlombok:lombok'

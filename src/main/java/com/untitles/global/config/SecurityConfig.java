@@ -104,6 +104,11 @@ public class SecurityConfig {
                         .maxSessionsPreventsLogin(false)
                 )
 
+                // 세션 고정 공격 방지 - 로그인 시 새 세션 ID 발급
+                .sessionManagement(session -> session
+                        .sessionFixation().newSession()
+                )
+
                 // SecurityContext를 세션에 저장 (핵심!)
                 .securityContext(context -> context
                         .securityContextRepository(securityContextRepository())

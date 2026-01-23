@@ -14,6 +14,7 @@ import com.untitles.domain.workspace.entity.WorkspaceMember;
 import com.untitles.domain.workspace.entity.WorkspaceRole;
 import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
+import com.untitles.global.util.HtmlSanitizer;
 import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final HtmlSanitizer htmlSanitizer;
 
     /**
      * 게시글 상세 조회
@@ -62,9 +64,12 @@ public class PostService {
                     .orElseThrow(() -> new IllegalArgumentException("폴더를 찾을 수 없습니다."));
         }
 
+        // XSS 방지를 위한 HTML Sanitize
+        String sanitizedContent = htmlSanitizer.sanitize(request.getContent());
+
         Post post = Post.builder()
                 .title(request.getTitle())
-                .content(request.getContent())
+                .content(sanitizedContent)
                 .author(user)
                 .workspace(workspace)
                 .folder(folder)
@@ -91,7 +96,11 @@ public class PostService {
         }
 
         if (request.getTitle() != null) post.updateTitle(request.getTitle());
-        if (request.getContent() != null) post.updateContent(request.getContent());
+        if (request.getContent() != null) {
+            // XSS 방지를 위한 HTML Sanitize
+            String sanitizedContent = htmlSanitizer.sanitize(request.getContent());
+            post.updateContent(sanitizedContent);
+        }
 
         return PostResponseDTO.from(postRepository.saveAndFlush(post));
     }

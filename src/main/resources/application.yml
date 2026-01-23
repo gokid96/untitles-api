@@ -10,6 +10,15 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQLDialect
+
 server:
   port: 8070
   servlet:
@@ -18,3 +27,18 @@ server:
         http-only: true
         same-site: strict
         max-age: 3600
+
+aws:
+  ses:
+    access-key: ${AWS_ACCESS_KEY}
+    secret-key: ${AWS_SECRET_KEY}
+    region: ap-northeast-2
+    from-email: noreply@untitles.net
+
+cloudflare:
+  r2:
+    access-key: ${R2_ACCESS_KEY_ID}
+    secret-key: ${R2_SECRET_ACCESS_KEY}
+    endpoint: ${R2_ENDPOINT}
+    bucket: ${R2_BUCKET_NAME}
+    public-url: ${R2_PUBLIC_URL}
