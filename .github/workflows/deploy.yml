@@ -1,0 +1,86 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # GitHub Container Registry 로그인
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # 기존 컨테이너 중지 및 삭제
+            docker stop untitles-api || true
+            docker rm untitles-api || true
+            
+            # 최신 이미지 pull
+            docker pull ghcr.io/${{ github.repository }}:latest
+            
+            # 새 컨테이너 실행
+            docker run -d \
+              --name untitles-api \
+              --restart unless-stopped \
+              -p 8070:8070 \
+              -e DB_HOST=${{ secrets.DB_HOST }} \
+              -e DB_USERNAME=${{ secrets.DB_USERNAME }} \
+              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+              -e AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }} \
+              -e AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} \
+              -e R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }} \
+              -e R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }} \
+              -e R2_ENDPOINT=${{ secrets.R2_ENDPOINT }} \
+              -e R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }} \
+              -e R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }} \
+              ghcr.io/${{ github.repository }}:latest
+            
+            # 오래된 이미지 정리
+            docker image prune -f
