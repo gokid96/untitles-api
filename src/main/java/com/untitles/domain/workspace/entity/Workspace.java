@@ -18,6 +18,10 @@ import java.util.List;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Workspace {
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private WorkspaceType type;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long workspaceId;
@@ -38,11 +42,11 @@ public class Workspace {
     @Builder.Default
     private List<WorkspaceMember> members = new ArrayList<>();
 
-    @OneToMany(mappedBy = "workspace", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "workspace", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Folder> folders = new ArrayList<>();
 
-    @OneToMany(mappedBy = "workspace", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "workspace", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<Post> posts = new ArrayList<>();
 

@@ -53,7 +53,7 @@ public class Folder {
     private List<Folder> children = new ArrayList<>();
 
     // 양방향 - 폴더 내 게시글들
-    @OneToMany(mappedBy = "folder", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "folder", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Post> posts = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)

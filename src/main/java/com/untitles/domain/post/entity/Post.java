@@ -22,19 +22,15 @@ public class Post {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "post_id")
     private Long postId;
-    
+
+    @Version
+    private Long version;
+
     @Column(nullable = false, length = 200)
     private String title;
     
     @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
-    
-    @Column(length = 500)
-    private String summary;
-
-    @Column(name = "view_count", nullable = false)
-    @Builder.Default
-    private Integer viewCount = 0;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     @CreationTimestamp
@@ -56,6 +52,7 @@ public class Post {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "workspace_id", nullable = false)
     private Workspace workspace;
+
 
     public void updateTitle(String Title) {
         this.title = Title;

@@ -68,4 +68,6 @@ public class CustomUserDetails implements UserDetails {
     public String getEmail() {
         return user.getEmail();
     }
+
+    public String getProfileImage(){return user.getProfileImage();}
 }

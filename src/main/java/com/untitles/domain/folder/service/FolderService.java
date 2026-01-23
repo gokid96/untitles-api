@@ -3,8 +3,12 @@ package com.untitles.domain.folder.service;
 import com.untitles.domain.folder.dto.request.FolderCreateRequestDTO;
 import com.untitles.domain.folder.dto.request.FolderUpdateRequestDTO;
 import com.untitles.domain.folder.dto.response.FolderResponseDTO;
+import com.untitles.domain.folder.dto.response.WorkspaceTreeResponseDTO;
 import com.untitles.domain.folder.entity.Folder;
 import com.untitles.domain.folder.repository.FolderRepository;
+import com.untitles.domain.post.dto.response.PostSimpleDTO;
+import com.untitles.domain.post.entity.Post;
+import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.user.repository.UserRepository;
 import com.untitles.domain.workspace.entity.Workspace;
@@ -14,19 +18,20 @@ import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class FolderService {
 
     private final FolderRepository folderRepository;
     private final UserRepository userRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final PostRepository postRepository;
 
     /**
      * 워크스페이스 멤버 권한 확인 (공통 헬퍼)
@@ -53,13 +58,17 @@ public class FolderService {
     /**
      * 폴더 생성
      */
-    @Transactional
     public FolderResponseDTO createFolder(Long userId, Long workspaceId, FolderCreateRequestDTO request) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
 
         Users user = member.getUser();
         Workspace workspace = member.getWorkspace();
+
+        long folderCount = folderRepository.countByWorkspace(workspace);
+        if(folderCount >= 20){
+            throw new IllegalArgumentException("폴더는 워크스페이스당 최대 20개까지 생성할 수 있습니다.");
+        }
 
         // 부모 폴더 조회 (있으면)
         Folder parent = null;
@@ -82,7 +91,6 @@ public class FolderService {
     /**
      * 폴더 수정
      */
-    @Transactional
     public FolderResponseDTO updateFolder(Long userId, Long workspaceId, Long folderId, FolderUpdateRequestDTO request) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -91,13 +99,13 @@ public class FolderService {
                 .orElseThrow(() -> new IllegalArgumentException("폴더를 찾을 수 없습니다."));
 
         folder.updateName(request.getName());
+        folderRepository.save(folder);
         return FolderResponseDTO.from(folder);
     }
 
     /**
      * 폴더 삭제
      */
-    @Transactional
     public void deleteFolder(Long userId, Long workspaceId, Long folderId) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -111,7 +119,6 @@ public class FolderService {
     /**
      * 폴더 이동
      */
-    @Transactional
     public FolderResponseDTO moveFolder(Long userId, Long workspaceId, Long folderId, Long newParentId) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -130,7 +137,7 @@ public class FolderService {
             }
 
             // 하위 폴더로 이동 불가 체크
-            Folder current = newParent.getParent();
+            Folder current = newParent;
             while (current != null) {
                 if (current.getFolderId().equals(folderId)) {
                     throw new IllegalArgumentException("하위 폴더로 이동할 수 없습니다.");
@@ -140,34 +147,56 @@ public class FolderService {
         }
 
         folder.moveToParent(newParent);
+        folderRepository.save(folder);
         return FolderResponseDTO.from(folder);
     }
 
     /**
-     * 루트 폴더 목록 조회
+     * 루트 폴더 목록 조회 (하위 폴더 포함된 트리 구조)
      */
-    public List<FolderResponseDTO> getRootFolders(Long userId, Long workspaceId) {
-        getMemberOrThrow(userId, workspaceId);  // 읽기 권한 확인
+    public WorkspaceTreeResponseDTO getRootFolders(Long userId, Long workspaceId) {
+        getMemberOrThrow(userId, workspaceId);
 
-        List<Folder> folders = folderRepository.findByWorkspaceWorkspaceIdAndParentIsNull(workspaceId);
-        return folders.stream()
-                .map(FolderResponseDTO::from)
+        // 폴더 + 게시글 조회
+        List<Folder> allFolders = folderRepository.findAllByWorkspaceIdWithPosts(workspaceId);
+
+        // 루트 게시글 조회 (폴더 없는 게시글)
+        List<Post> rootPosts = postRepository.findByWorkspaceWorkspaceIdAndFolderIsNull(workspaceId);
+
+        // Map 생성: 폴더ID → DTO (children은 빈 리스트로 초기화)
+        Map<Long, FolderResponseDTO> dtoMap = allFolders.stream()
+                .collect(Collectors.toMap(
+                        Folder::getFolderId,
+                        FolderResponseDTO::from
+                ));
+
+        // 부모-자식 관계 연결
+        //    parent와 dtoMap.get(parentId)는 같은 객체를 참조하므로
+        //    parent를 수정하면 Map 안의 객체도 함께 수정됨
+        for (Folder folder : allFolders) {
+            if (folder.getParent() != null) {
+                FolderResponseDTO parent = dtoMap.get(folder.getParent().getFolderId());
+                FolderResponseDTO child = dtoMap.get(folder.getFolderId());
+                if (parent != null) {
+                    parent.getChildren().add(child);
+                }
+            }
+        }
+
+        // 루트 폴더 목록
+        List<FolderResponseDTO> rootFolders = allFolders.stream()
+                .filter(f -> f.getParent() == null)
+                .map(f -> dtoMap.get(f.getFolderId()))
                 .toList();
-    }
 
-    /**
-     * 하위 폴더 목록 조회
-     */
-    public List<FolderResponseDTO> getChildFolders(Long userId, Long workspaceId, Long parentId) {
-        getMemberOrThrow(userId, workspaceId);  // 읽기 권한 확인
-
-        // 부모 폴더가 해당 워크스페이스에 속하는지 확인
-        folderRepository.findByFolderIdAndWorkspaceWorkspaceId(parentId, workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("폴더를 찾을 수 없습니다."));
-
-        List<Folder> children = folderRepository.findByParentFolderId(parentId);
-        return children.stream()
-                .map(FolderResponseDTO::from)
+        // 루트 게시글 변환
+        List<PostSimpleDTO> rootPostDTOs = rootPosts.stream()
+                .map(PostSimpleDTO::from)
                 .toList();
+
+        return WorkspaceTreeResponseDTO.builder()
+                .folders(rootFolders)
+                .rootPosts(rootPostDTOs)
+                .build();
     }
 }

@@ -19,4 +19,7 @@ public class UserUpdateRequestDTO {
 
     @Size(min = 6, max = 20, message = "비밀번호는 6-20자여야 합니다")
     private String newPassword;  // 새 비밀번호
+
+    @Size(max = 500)
+    private String profileImage;
 }

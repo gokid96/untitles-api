@@ -4,6 +4,7 @@ import com.untitles.domain.folder.dto.request.FolderCreateRequestDTO;
 import com.untitles.domain.folder.dto.request.FolderUpdateRequestDTO;
 import com.untitles.domain.folder.dto.request.MoveFolderRequestDTO;
 import com.untitles.domain.folder.dto.response.FolderResponseDTO;
+import com.untitles.domain.folder.dto.response.WorkspaceTreeResponseDTO;
 import com.untitles.domain.folder.service.FolderService;
 import com.untitles.global.security.CustomUserDetails;
 import jakarta.validation.Valid;
@@ -23,26 +24,14 @@ public class FolderController {
     private final FolderService folderService;
 
     /**
-     * 루트 폴더 목록 조회
+     * 워크스페이스 트리 조회 (폴더 + 게시글)
      */
     @GetMapping
-    public ResponseEntity<List<FolderResponseDTO>> getRootFolders(
+    public ResponseEntity<WorkspaceTreeResponseDTO> getWorkspaceTree(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long workspaceId) {
+            @PathVariable Long workspaceId){
         return ResponseEntity.ok(folderService.getRootFolders(userDetails.getUserId(), workspaceId));
     }
-
-    /**
-     * 하위 폴더 목록 조회
-     */
-    @GetMapping("/{folderId}/children")
-    public ResponseEntity<List<FolderResponseDTO>> getChildFolders(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long workspaceId,
-            @PathVariable Long folderId) {
-        return ResponseEntity.ok(folderService.getChildFolders(userDetails.getUserId(), workspaceId, folderId));
-    }
-
     /**
      * 폴더 생성
      */

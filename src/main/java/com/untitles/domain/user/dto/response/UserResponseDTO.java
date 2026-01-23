@@ -18,6 +18,7 @@ public class UserResponseDTO {
     private String email;
     private String loginId;
     private String nickname;
+    private String profileImage;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -28,6 +29,7 @@ public class UserResponseDTO {
                 .email(user.getEmail())
                 .loginId(user.getLoginId())
                 .nickname(user.getNickname())
+                .profileImage(user.getProfileImage())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

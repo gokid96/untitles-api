@@ -1,10 +1,14 @@
 package com.untitles.global.exception;
 
+import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.StaleObjectStateException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -15,6 +19,36 @@ import java.util.Map;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /**
+     * 낙관적 락 충돌 (409 Conflict)
+     */
+    @ExceptionHandler({
+            OptimisticLockException.class,
+            ObjectOptimisticLockingFailureException.class,
+            StaleObjectStateException.class
+    })
+    public ResponseEntity<Map<String, Object>> handleOptimisticLockException(Exception e) {
+        log.warn("Optimistic lock conflict: {}", e.getMessage());
+        return createErrorResponse(HttpStatus.CONFLICT, "다른 곳에서 수정되었습니다.");
+    }
+
+    /**
+     * 트랜잭션 예외 처리
+     */
+    @ExceptionHandler(TransactionSystemException.class)
+    public ResponseEntity<Map<String, Object>> handleTransactionException(TransactionSystemException e) {
+        Throwable cause = e.getRootCause();
+
+        if (cause instanceof OptimisticLockException ||
+                cause instanceof StaleObjectStateException) {
+            log.warn("Optimistic lock conflict: {}", cause.getMessage());
+            return createErrorResponse(HttpStatus.CONFLICT, "다른 곳에서 수정되었습니다.");
+        }
+
+        log.error("Transaction error: ", e);
+        return createErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
+    }
 
     /**
      * IllegalArgumentException 처리 (비즈니스 로직 에러)
@@ -61,7 +95,7 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(error -> error.getDefaultMessage())
                 .orElse("입력값이 올바르지 않습니다.");
-        
+
         log.warn("Validation error: {}", message);
         return createErrorResponse(HttpStatus.BAD_REQUEST, message);
     }

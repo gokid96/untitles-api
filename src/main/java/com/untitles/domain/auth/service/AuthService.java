@@ -6,6 +6,12 @@ import com.untitles.domain.user.dto.request.UserCreateRequestDTO;
 import com.untitles.domain.user.dto.request.UserLoginRequestDTO;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.user.repository.UserRepository;
+import com.untitles.domain.workspace.entity.Workspace;
+import com.untitles.domain.workspace.entity.WorkspaceMember;
+import com.untitles.domain.workspace.entity.WorkspaceRole;
+import com.untitles.domain.workspace.entity.WorkspaceType;
+import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
+import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.security.CustomUserDetails;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -22,12 +28,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final WorkspaceRepository  workspaceRepository;
+    private final WorkspaceMemberRepository  workspaceMemberRepository;
     /**
      * 로그인 - 세션 기반
      */
@@ -91,6 +98,20 @@ public class AuthService {
                 .build();
 
         Users savedUser = userRepository.save(user);
+
+        // 회원가입 후 개인 워크스페이스 자동 생성
+        Workspace personalWorkspace = Workspace.builder()
+                .name("개인 워크스페이스")
+                .type(WorkspaceType.PERSONAL)
+                .build();
+        workspaceRepository.save(personalWorkspace);
+
+        WorkspaceMember owner = WorkspaceMember.builder()
+                .workspace(personalWorkspace)
+                .user(savedUser)
+                .role(WorkspaceRole.OWNER)
+                .build();
+        workspaceMemberRepository.save(owner);
 
         emailService.deleteVerification(request.getEmail());
 

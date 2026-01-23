@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
 import software.amazon.awssdk.services.sesv2.model.*;
 
@@ -17,7 +16,6 @@ import java.util.Random;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class EmailService {
 
     private final SesV2Client sesV2Client;
@@ -39,7 +37,6 @@ public class EmailService {
     /**
      * 인증번호 발송
      */
-    @Transactional
     public void sendVerificationCode(String email) {
         // 이미 가입된 이메일인지 확인
         if (userRepository.existsByEmail(email)) {
@@ -65,7 +62,6 @@ public class EmailService {
     /**
      * 인증번호 확인
      */
-    @Transactional
     public boolean verifyCode(String email, String code) {
         EmailVerification verification = verificationRepository
                 .findByEmailAndVerifiedFalse(email)
@@ -83,6 +79,7 @@ public class EmailService {
 
         // 인증 완료 처리
         verification.verify();
+        verificationRepository.save(verification);
 
         log.info("이메일 인증 완료: {}", email);
         return true;
@@ -101,7 +98,6 @@ public class EmailService {
     /**
      * 인증 데이터 삭제 (회원가입 완료 후)
      */
-    @Transactional
     public void deleteVerification(String email) {
         verificationRepository.deleteByEmail(email);
     }

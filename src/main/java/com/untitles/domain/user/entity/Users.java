@@ -28,7 +28,10 @@ public class Users {
     
     @Column(nullable = false, length = 255)
     private String password;
-    
+
+    @Column(name = "profile_image", length = 500)
+    private String profileImage;
+
     @Column(nullable = false, unique = true, length = 50)
     private String nickname;
     
@@ -41,10 +44,10 @@ public class Users {
     private LocalDateTime updatedAt;
 
 
+    public void updateProfileImage(String profileImage) {this.profileImage = profileImage;}
     public void updatePassword(String password) {
         this.password = password;
     }
-
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }

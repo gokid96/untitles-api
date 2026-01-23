@@ -17,12 +17,10 @@ public class PostResponseDTO {
     private Long postId;
     private String title;
     private String content;
-    private String summary;
-    private Integer viewCount;
+    private Long version;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Long folderId;
-    private String folderName;
 
     // 작성자 정보
     private Long authorId;
@@ -35,14 +33,12 @@ public class PostResponseDTO {
                 .postId(post.getPostId())
                 .title(post.getTitle())
                 .content(post.getContent())
-                .summary(post.getSummary())
-                .viewCount(post.getViewCount())
+                .version(post.getVersion())
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .authorId(post.getAuthor().getUserId())
                 .authNickname(post.getAuthor().getNickname())
-                .folderId(post.getFolder() != null ? post.getFolder().getFolderId() : null) // ← 추가
-                .folderName(post.getFolder() != null ? post.getFolder().getName() : null) // ← 선택
+                .folderId(post.getFolder() != null ? post.getFolder().getFolderId() : null)
                 .build();
 
     }

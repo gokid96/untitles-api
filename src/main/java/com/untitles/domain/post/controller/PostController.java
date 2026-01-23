@@ -21,19 +21,13 @@ public class PostController {
 
     private final PostService postService;
 
-    @GetMapping
-    public ResponseEntity<List<PostResponseDTO>> getPosts(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long workspaceId) {
-        return ResponseEntity.ok(postService.getPosts(userDetails.getUserId(), workspaceId));
-    }
-
     @GetMapping("/{postId}")
     public ResponseEntity<PostResponseDTO> getPost(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long workspaceId,
-            @PathVariable Long postId) {
-        return ResponseEntity.ok(postService.getPost(userDetails.getUserId(), workspaceId, postId));
+        @AuthenticationPrincipal CustomUserDetails userDetails,
+        @PathVariable Long workspaceId,
+        @PathVariable Long postId
+    ){
+        return ResponseEntity.ok(postService.getPost(userDetails.getUserId(),workspaceId,postId));
     }
 
     @PostMapping

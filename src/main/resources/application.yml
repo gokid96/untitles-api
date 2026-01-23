@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: dev  # 기본값
+    active: dev
 
   application:
     name: untitles-api
@@ -12,3 +12,9 @@ spring:
 
 server:
   port: 8070
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: strict
+        max-age: 3600
