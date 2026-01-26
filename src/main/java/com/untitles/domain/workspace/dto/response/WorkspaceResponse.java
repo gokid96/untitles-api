@@ -14,10 +14,21 @@ public record WorkspaceResponse(
         String description,
         WorkspaceType type,
         WorkspaceRole myRole,
+
+        // 멤버
         int memberCount,
+        int memberLimit,
+
+        // 폴더
+        int folderCount,
+        int folderLimit,
+
+        // 게시글
+        int postCount,
+        int postLimit,
+
         LocalDateTime createdAt
-)
-{
+) {
     public static WorkspaceResponse from(Workspace workspace, WorkspaceRole myRole) {
         return WorkspaceResponse.builder()
                 .workspaceId(workspace.getWorkspaceId())
@@ -26,6 +37,11 @@ public record WorkspaceResponse(
                 .type(workspace.getType())
                 .myRole(myRole)
                 .memberCount(workspace.getMembers().size())
+                .memberLimit(5)
+                .folderCount(workspace.getFolders().size())
+                .folderLimit(20)
+                .postCount(workspace.getPosts().size())
+                .postLimit(50)
                 .createdAt(workspace.getCreatedAt())
                 .build();
     }

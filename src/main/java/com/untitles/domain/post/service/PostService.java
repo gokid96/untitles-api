@@ -55,7 +55,7 @@ public class PostService {
         Workspace workspace = member.getWorkspace();
 
         long postCount = postRepository.countByWorkspace(workspace);
-        if (postCount >= 100) {
+        if (postCount >= 50) {
             throw new BusinessException(ErrorCode.POST_LIMIT_EXCEEDED);
         }
 

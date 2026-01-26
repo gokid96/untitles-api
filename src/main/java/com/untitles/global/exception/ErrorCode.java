@@ -14,7 +14,7 @@ public enum ErrorCode {
     DUPLICATE_EMAIL(HttpStatus.BAD_REQUEST, "이미 사용중인 이메일입니다."),
     DUPLICATE_LOGIN_ID(HttpStatus.BAD_REQUEST, "이미 사용중인 아이디입니다."),
     DUPLICATE_NICKNAME(HttpStatus.BAD_REQUEST, "이미 사용중인 닉네임입니다."),
-    POST_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "게시글은 워크스페이스당 최대 100개까지 생성할 수 있습니다."),
+    POST_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "게시글은 워크스페이스당 최대 50개까지 생성할 수 있습니다."),
     FOLDER_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "폴더는 워크스페이스당 최대 20개까지 생성할 수 있습니다."),
     WORKSPACE_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "워크스페이스는 최대 3개까지 생성할 수 있습니다."),
     MEMBER_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "워크스페이스 멤버는 최대 5명까지 초대할 수 있습니다."),

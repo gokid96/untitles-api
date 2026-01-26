@@ -215,6 +215,14 @@ public class WorkspaceService {
         workspaceMemberRepository.delete(member);
     }
 
+    public int getTeamWorkspaceCount(Long userId) {
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        return (int) workspaceMemberRepository.countByUserAndRoleAndWorkspaceType(
+                user, WorkspaceRole.OWNER, WorkspaceType.TEAM
+        );
+    }
+
     // 헬퍼 메서드
     private WorkspaceMember getMemberOrThrow(Long userId, Long workspaceId) {
         Workspace workspace = workspaceRepository.findById(workspaceId)
@@ -232,4 +240,6 @@ public class WorkspaceService {
             throw new BusinessException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
     }
+
+
 }

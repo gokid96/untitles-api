@@ -15,6 +15,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/workspaces")
@@ -82,7 +83,7 @@ public class WorkspaceController {
             @PathVariable Long memberId,
             @RequestBody @Valid MemberRoleUpdateRequest request) {
         return ResponseEntity.ok(workspaceService.updateMemberRole(
-            userDetails.getUserId(), workspaceId, memberId, request));
+                userDetails.getUserId(), workspaceId, memberId, request));
     }
 
     @DeleteMapping("/{workspaceId}/members/{memberId}")
@@ -100,5 +101,18 @@ public class WorkspaceController {
             @PathVariable Long workspaceId) {
         workspaceService.leaveWorkspace(userDetails.getUserId(), workspaceId);
         return ResponseEntity.noContent().build();
+    }
+
+    // 워크스페이스 생성 제한 정보
+    @GetMapping("/limit")
+    public ResponseEntity<Map<String, Integer>> getWorkspaceLimit(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        int count = workspaceService.getTeamWorkspaceCount(userDetails.getUserId());
+
+        return ResponseEntity.ok(Map.of(
+                "count", count,
+                "limit", 3
+        ));
     }
 }
