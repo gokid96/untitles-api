@@ -16,6 +16,8 @@ import com.untitles.domain.workspace.entity.WorkspaceMember;
 import com.untitles.domain.workspace.entity.WorkspaceRole;
 import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
+import com.untitles.global.exception.BusinessException;
+import com.untitles.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -38,12 +40,12 @@ public class FolderService {
      */
     private WorkspaceMember getMemberOrThrow(Long userId, Long workspaceId) {
         Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("워크스페이스를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
         Users user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         return workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-                .orElseThrow(() -> new IllegalArgumentException("워크스페이스 접근 권한이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
     }
 
     /**
@@ -51,7 +53,7 @@ public class FolderService {
      */
     private void checkWritePermission(WorkspaceMember member) {
         if (member.getRole() == WorkspaceRole.VIEWER) {
-            throw new IllegalArgumentException("쓰기 권한이 없습니다.");
+            throw new BusinessException(ErrorCode.WRITE_PERMISSION_DENIED);
         }
     }
 
@@ -66,15 +68,15 @@ public class FolderService {
         Workspace workspace = member.getWorkspace();
 
         long folderCount = folderRepository.countByWorkspace(workspace);
-        if(folderCount >= 20){
-            throw new IllegalArgumentException("폴더는 워크스페이스당 최대 20개까지 생성할 수 있습니다.");
+        if (folderCount >= 20) {
+            throw new BusinessException(ErrorCode.FOLDER_LIMIT_EXCEEDED);
         }
 
         // 부모 폴더 조회 (있으면)
         Folder parent = null;
         if (request.getParentId() != null) {
             parent = folderRepository.findByFolderIdAndWorkspaceWorkspaceId(request.getParentId(), workspaceId)
-                    .orElseThrow(() -> new IllegalArgumentException("부모 폴더를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.FOLDER_NOT_FOUND));
         }
 
         Folder folder = Folder.builder()
@@ -96,7 +98,7 @@ public class FolderService {
         checkWritePermission(member);
 
         Folder folder = folderRepository.findByFolderIdAndWorkspaceWorkspaceId(folderId, workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("폴더를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.FOLDER_NOT_FOUND));
 
         folder.updateName(request.getName());
         folderRepository.save(folder);
@@ -111,7 +113,7 @@ public class FolderService {
         checkWritePermission(member);
 
         Folder folder = folderRepository.findByFolderIdAndWorkspaceWorkspaceId(folderId, workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("폴더를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.FOLDER_NOT_FOUND));
 
         folderRepository.delete(folder);
     }
@@ -124,23 +126,23 @@ public class FolderService {
         checkWritePermission(member);
 
         Folder folder = folderRepository.findByFolderIdAndWorkspaceWorkspaceId(folderId, workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("폴더를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.FOLDER_NOT_FOUND));
 
         Folder newParent = null;
         if (newParentId != null) {
             newParent = folderRepository.findByFolderIdAndWorkspaceWorkspaceId(newParentId, workspaceId)
-                    .orElseThrow(() -> new IllegalArgumentException("목적지 폴더를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.FOLDER_NOT_FOUND));
 
             // 자기 자신으로 이동 불가
             if (folder.getFolderId().equals(newParentId)) {
-                throw new IllegalArgumentException("자기 자신으로 이동할 수 없습니다.");
+                throw new BusinessException(ErrorCode.CANNOT_MOVE_TO_SELF);
             }
 
             // 하위 폴더로 이동 불가 체크
             Folder current = newParent;
             while (current != null) {
                 if (current.getFolderId().equals(folderId)) {
-                    throw new IllegalArgumentException("하위 폴더로 이동할 수 없습니다.");
+                    throw new BusinessException(ErrorCode.CANNOT_MOVE_TO_CHILD);
                 }
                 current = current.getParent();
             }

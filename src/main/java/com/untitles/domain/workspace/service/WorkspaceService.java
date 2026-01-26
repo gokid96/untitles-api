@@ -14,6 +14,8 @@ import com.untitles.domain.workspace.entity.WorkspaceRole;
 import com.untitles.domain.workspace.entity.WorkspaceType;
 import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
+import com.untitles.global.exception.BusinessException;
+import com.untitles.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,13 +34,13 @@ public class WorkspaceService {
     @Transactional
     public WorkspaceResponse createWorkspace(Long userId, WorkspaceCreateRequest request) {
         Users user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         long workspaceCount = workspaceMemberRepository.countByUserAndRoleAndWorkspaceType(
                 user, WorkspaceRole.OWNER, WorkspaceType.TEAM
         );
         if (workspaceCount >= 3) {
-            throw new IllegalArgumentException("워크스페이스는 최대 3개까지 생성할 수 있습니다.");
+            throw new BusinessException(ErrorCode.WORKSPACE_LIMIT_EXCEEDED);
         }
         Workspace workspace = Workspace.builder()
                 .name(request.name())
@@ -63,7 +65,7 @@ public class WorkspaceService {
     // 내 워크스페이스 목록
     public List<WorkspaceResponse> getMyWorkspaces(Long userId) {
         Users user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         return workspaceMemberRepository.findAllByUserWithWorkspaceAndMembers(user).stream()
                 .map(member -> WorkspaceResponse.from(
@@ -99,7 +101,7 @@ public class WorkspaceService {
 
         Workspace workspace = member.getWorkspace();
         if (workspace.getType() == WorkspaceType.PERSONAL) {
-            throw new IllegalArgumentException("개인 워크스페이스는 삭제할 수 없습니다.");
+            throw new BusinessException(ErrorCode.CANNOT_DELETE_PERSONAL_WORKSPACE);
         }
 
 
@@ -113,25 +115,25 @@ public class WorkspaceService {
 
         // OWNER 권한은 부여 불가
         if (request.role() == WorkspaceRole.OWNER) {
-            throw new IllegalArgumentException("OWNER 권한은 부여할 수 없습니다.");
+            throw new BusinessException(ErrorCode.CANNOT_ASSIGN_OWNER_ROLE);
         }
 
         Users invitee = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("해당 이메일의 사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         // inviteMember() - 개인 워크스페이스 초대방지
         long memberCount = workspaceMemberRepository.countByWorkspace(inviter.getWorkspace());
-        if(memberCount >= 5){
-            throw new IllegalArgumentException("워크스페이스 멤버는 최대 5명 까지 초대할 수 있습니다.");
+        if (memberCount >= 5) {
+            throw new BusinessException(ErrorCode.MEMBER_LIMIT_EXCEEDED);
         }
 
         if (inviter.getWorkspace().getType() == WorkspaceType.PERSONAL) {
-            throw new IllegalArgumentException("개인 워크스페이스에는 멤버를 초대할 수 없습니다.");
+            throw new BusinessException(ErrorCode.CANNOT_INVITE_TO_PERSONAL_WORKSPACE);
         }
 
         // 이미 멤버인지 확인
         if (workspaceMemberRepository.existsByWorkspaceAndUser(inviter.getWorkspace(), invitee)) {
-            throw new IllegalArgumentException("이미 워크스페이스 멤버입니다.");
+            throw new BusinessException(ErrorCode.ALREADY_WORKSPACE_MEMBER);
         }
 
         WorkspaceMember newMember = WorkspaceMember.builder()
@@ -149,7 +151,7 @@ public class WorkspaceService {
         getMemberOrThrow(userId, workspaceId);  // 권한 확인
 
         Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("워크스페이스를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
 
         return workspaceMemberRepository.findAllByWorkspace(workspace).stream()
                 .map(WorkspaceMemberResponse::from)
@@ -163,18 +165,18 @@ public class WorkspaceService {
         checkPermission(requester, WorkspaceRole.ADMIN);
 
         WorkspaceMember target = workspaceMemberRepository.findById(targetMemberId)
-                .orElseThrow(() -> new IllegalArgumentException("멤버를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         if (!target.getWorkspace().getWorkspaceId().equals(workspaceId)) {
-            throw new IllegalArgumentException("해당 워크스페이스의 멤버가 아닙니다.");
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
         // 자기보다 높은 숫자만 변경가능
         if (requester.getRole() != WorkspaceRole.OWNER
                 && target.getRole().getLevel() <= requester.getRole().getLevel()) {
-            throw new IllegalArgumentException("동급 이상의 권한은 변경할 수 없습니다.");
+            throw new BusinessException(ErrorCode.CANNOT_MODIFY_HIGHER_ROLE);
         }
         if (request.role() == WorkspaceRole.OWNER) {
-            throw new IllegalArgumentException("OWNER 권한은 부여할 수 없습니다.");
+            throw new BusinessException(ErrorCode.CANNOT_ASSIGN_OWNER_ROLE);
         }
 
         target.updateRole(request.role());
@@ -188,15 +190,15 @@ public class WorkspaceService {
         checkPermission(requester, WorkspaceRole.ADMIN);
 
         WorkspaceMember target = workspaceMemberRepository.findById(targetMemberId)
-                .orElseThrow(() -> new IllegalArgumentException("멤버를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         if (!target.getWorkspace().getWorkspaceId().equals(workspaceId)) {
-            throw new IllegalArgumentException("해당 워크스페이스의 멤버가 아닙니다.");
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
         // 자기보다 높은 숫자만 변경가능
         if (requester.getRole() != WorkspaceRole.OWNER
                 && target.getRole().getLevel() <= requester.getRole().getLevel()) {
-            throw new IllegalArgumentException("동급 이상의 권한은 삭제할 수 없습니다.");
+            throw new BusinessException(ErrorCode.CANNOT_MODIFY_HIGHER_ROLE);
         }
 
         workspaceMemberRepository.delete(target);
@@ -207,7 +209,7 @@ public class WorkspaceService {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
 
         if (member.getRole() == WorkspaceRole.OWNER) {
-            throw new IllegalArgumentException("OWNER는 워크스페이스를 나갈 수 없습니다. 삭제하거나 양도하세요.");
+            throw new BusinessException(ErrorCode.OWNER_CANNOT_LEAVE);
         }
 
         workspaceMemberRepository.delete(member);
@@ -216,18 +218,18 @@ public class WorkspaceService {
     // 헬퍼 메서드
     private WorkspaceMember getMemberOrThrow(Long userId, Long workspaceId) {
         Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("워크스페이스를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
 
         Users user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         return workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-                .orElseThrow(() -> new IllegalArgumentException("워크스페이스 접근 권한이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCESS_DENIED));
     }
 
     private void checkPermission(WorkspaceMember member, WorkspaceRole requiredRole) {
         if (!member.getRole().hasPermission(requiredRole)) {
-            throw new IllegalArgumentException("권한이 부족합니다.");
+            throw new BusinessException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
     }
 }

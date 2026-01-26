@@ -3,6 +3,8 @@ package com.untitles.domain.email.service;
 import com.untitles.domain.email.entity.EmailVerification;
 import com.untitles.domain.email.repository.EmailVerificationRepository;
 import com.untitles.domain.user.repository.UserRepository;
+import com.untitles.global.exception.BusinessException;
+import com.untitles.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,7 +42,7 @@ public class EmailService {
     public void sendVerificationCode(String email) {
         // 이미 가입된 이메일인지 확인
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("이미 가입된 이메일입니다.");
+            throw new BusinessException(ErrorCode.ALREADY_REGISTERED_EMAIL);
         }
 
         // 기존 인증 데이터 삭제
@@ -65,16 +67,16 @@ public class EmailService {
     public boolean verifyCode(String email, String code) {
         EmailVerification verification = verificationRepository
                 .findByEmailAndVerifiedFalse(email)
-                .orElseThrow(() -> new IllegalArgumentException("인증 요청을 먼저 해주세요."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.VERIFICATION_NOT_REQUESTED));
 
         // 만료 체크
         if (verification.isExpired()) {
-            throw new IllegalArgumentException("인증번호가 만료되었습니다.");
+            throw new BusinessException(ErrorCode.VERIFICATION_CODE_EXPIRED);
         }
 
         // 코드 일치 확인
         if (!verification.getCode().equals(code)) {
-            throw new IllegalArgumentException("인증번호가 일치하지 않습니다.");
+            throw new BusinessException(ErrorCode.VERIFICATION_CODE_MISMATCH);
         }
 
         // 인증 완료 처리

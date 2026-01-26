@@ -12,6 +12,8 @@ import com.untitles.domain.workspace.entity.WorkspaceRole;
 import com.untitles.domain.workspace.entity.WorkspaceType;
 import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
+import com.untitles.global.exception.BusinessException;
+import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.security.CustomUserDetails;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -76,17 +78,17 @@ public class AuthService {
     @Transactional
     public LoginResponse signup(UserCreateRequestDTO request, HttpSession session) {
         if (!emailService.isVerified(request.getEmail())) {
-            throw new IllegalStateException("이메일 인증이 필요합니다.");
+            throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
         // 중복 검사
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("이미 사용중인 이메일입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
         if (userRepository.existsByLoginId(request.getLoginId())) {
-            throw new IllegalArgumentException("이미 사용중인 아이디입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
         if (userRepository.existsByNickname(request.getNickname())) {
-            throw new IllegalArgumentException("이미 사용중인 닉네임입니다.");
+            throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
         // 사용자 생성

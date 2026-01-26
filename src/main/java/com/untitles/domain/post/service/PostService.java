@@ -14,10 +14,13 @@ import com.untitles.domain.workspace.entity.WorkspaceMember;
 import com.untitles.domain.workspace.entity.WorkspaceRole;
 import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
+import com.untitles.global.exception.BusinessException;
+import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.util.HtmlSanitizer;
 import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -37,8 +40,7 @@ public class PostService {
         getMemberOrThrow(userId, workspaceId);
 
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
-
+                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
         return PostResponseDTO.from(post);
     }
 
@@ -53,15 +55,15 @@ public class PostService {
         Workspace workspace = member.getWorkspace();
 
         long postCount = postRepository.countByWorkspace(workspace);
-        if (postCount >= 100){
-            throw new IllegalArgumentException("게시글은 워크스페이스당 최대 100개까지 생성할 수 있습니다.");
+        if (postCount >= 100) {
+            throw new BusinessException(ErrorCode.POST_LIMIT_EXCEEDED);
         }
-        
+
         // 폴더 조회 (있으면)
         Folder folder = null;
         if (request.getFolderId() != null) {
             folder = folderRepository.findByFolderIdAndWorkspaceWorkspaceId(request.getFolderId(), workspaceId)
-                    .orElseThrow(() -> new IllegalArgumentException("폴더를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.FOLDER_NOT_FOUND));
         }
 
         // XSS 방지를 위한 HTML Sanitize
@@ -88,7 +90,7 @@ public class PostService {
         checkWritePermission(member);
 
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
 
         // 클라이언트 version과 DB version 비교
         if (request.getVersion() != null && !request.getVersion().equals(post.getVersion())) {
@@ -113,7 +115,7 @@ public class PostService {
         checkWritePermission(member);
 
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
 
         postRepository.delete(post);
     }
@@ -126,12 +128,12 @@ public class PostService {
         checkWritePermission(member);
 
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
 
         Folder newFolder = null;
         if (newFolderId != null) {
             newFolder = folderRepository.findByFolderIdAndWorkspaceWorkspaceId(newFolderId, workspaceId)
-                    .orElseThrow(() -> new IllegalArgumentException("폴더를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new BusinessException(ErrorCode.FOLDER_NOT_FOUND));
         }
 
         post.updateFolder(newFolder);
@@ -141,17 +143,17 @@ public class PostService {
 
     private WorkspaceMember getMemberOrThrow(Long userId, Long workspaceId) {
         Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new IllegalArgumentException("워크스페이스를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
         Users user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         return workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-                .orElseThrow(() -> new IllegalArgumentException("워크스페이스 접근 권한이 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCESS_DENIED));
     }
 
     private void checkWritePermission(WorkspaceMember member) {
         if (member.getRole() == WorkspaceRole.VIEWER) {
-            throw new IllegalArgumentException("쓰기 권한이 없습니다.");
+            throw new BusinessException(ErrorCode.WRITE_PERMISSION_DENIED);
         }
     }
 }
