@@ -57,7 +57,6 @@ public class AuthController {
      */
     @GetMapping("/me")
     public ResponseEntity<Map<String, Object>> getCurrentUser(HttpSession session) {
-        // SecurityContext에서 인증 정보 확인
         var context = org.springframework.security.core.context.SecurityContextHolder.getContext();
         var authentication = context.getAuthentication();
 
@@ -68,8 +67,7 @@ public class AuthController {
         }
 
         var userDetails = (com.untitles.global.security.CustomUserDetails) authentication.getPrincipal();
-        
-        // DB에서 최신 사용자 정보 조회
+
         var userInfo = userService.getUserInfo(userDetails.getUserId());
 
         Map<String, Object> response = new java.util.HashMap<>();
