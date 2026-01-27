@@ -73,6 +73,7 @@ public class AuthController {
         Map<String, Object> response = new java.util.HashMap<>();
         response.put("authenticated", true);
         response.put("userId", userInfo.getUserId());
+        response.put("email", userInfo.getEmail());
         response.put("loginId", userInfo.getLoginId());
         response.put("nickname", userInfo.getNickname());
         response.put("profileImage", userInfo.getProfileImage());

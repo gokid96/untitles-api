@@ -1,5 +1,6 @@
 package com.untitles.global.config;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import io.github.bucket4j.Bucket;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.Map;
 
 /**
  * Rate Limiting Filter
@@ -23,7 +23,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class RateLimitFilter implements Filter {
 
-    private final Map<String, Bucket> rateLimitBuckets;
+    private final Cache<String, Bucket> rateLimitBuckets;
 
     // IP별 버킷 타입별 캐시 키 생성
     private static final String LOGIN_PREFIX = "login:";
@@ -61,20 +61,17 @@ public class RateLimitFilter implements Filter {
      */
     private Bucket resolveBucket(String clientIp, String path) {
         if (path.contains("/auth/login")) {
-            // 로그인 API - 엄격한 제한
             String key = LOGIN_PREFIX + clientIp;
-            return rateLimitBuckets.computeIfAbsent(key, k -> RateLimitConfig.createLoginBucket());
+            return rateLimitBuckets.get(key, k -> RateLimitConfig.createLoginBucket());  // 분당 10회
         } else if (path.contains("/email/send")) {
-            // 이메일 발송 API - 매우 엄격한 제한
             String key = EMAIL_PREFIX + clientIp;
-            return rateLimitBuckets.computeIfAbsent(key, k -> RateLimitConfig.createEmailBucket());
+            return rateLimitBuckets.get(key, k -> RateLimitConfig.createEmailBucket());  // 시간당 5회
         } else {
-            // 일반 API - 기본 제한
             String key = DEFAULT_PREFIX + clientIp;
-            return rateLimitBuckets.computeIfAbsent(key, k -> RateLimitConfig.createDefaultBucket());
+            return rateLimitBuckets.get(key, k -> RateLimitConfig.createDefaultBucket());  // 분당 60회
         }
     }
-
+    
     /**
      * 클라이언트 IP 추출 (프록시 고려)
      */

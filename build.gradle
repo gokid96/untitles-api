@@ -40,7 +40,8 @@ dependencies {
     
     // Rate Limiting
     implementation 'com.bucket4j:bucket4j-core:8.10.1'
-    
+    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
+
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.mysql:mysql-connector-j'
     annotationProcessor 'org.projectlombok:lombok'

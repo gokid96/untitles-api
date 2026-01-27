@@ -1,5 +1,7 @@
 package com.untitles.global.config;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
@@ -7,8 +9,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+
 
 /**
  * Rate Limiting 설정
@@ -22,8 +24,11 @@ public class RateLimitConfig {
      * 실제 프로덕션에서는 Redis 등을 사용하는 것이 좋음
      */
     @Bean
-    public Map<String, Bucket> rateLimitBuckets() {
-        return new ConcurrentHashMap<>();
+    public Cache<String, Bucket> rateLimitBuckets() {
+        return Caffeine.newBuilder()
+                .expireAfterAccess(10, TimeUnit.MINUTES)
+                .maximumSize(10000)
+                .build();
     }
 
     /**
