@@ -80,6 +80,12 @@ jobs:
               -e R2_ENDPOINT=${{ secrets.R2_ENDPOINT }} \
               -e R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }} \
               -e R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }} \
+              -e GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
+              -e GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+              -e KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }} \
+              -e KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }} \
+              -e NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }} \
+              -e NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }} \
               ghcr.io/${{ github.repository }}:latest
             
             # 오래된 이미지 정리
