@@ -14,7 +14,7 @@ server:
       cookie:
         secure: true
         same-site: none
-        domain: .untitles.net
+        domain: untitles.net
 
 logging:
   level:
