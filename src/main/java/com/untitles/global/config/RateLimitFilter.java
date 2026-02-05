@@ -18,7 +18,7 @@ import java.io.IOException;
  * 요청 경로에 따라 다른 제한을 적용
  */
 @Slf4j
-@Component
+// @Component  // 부하 테스트를 위해 임시 비활성화
 @Order(1)  // 가장 먼저 실행
 @RequiredArgsConstructor
 public class RateLimitFilter implements Filter {
