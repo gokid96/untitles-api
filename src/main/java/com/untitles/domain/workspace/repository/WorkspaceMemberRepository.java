@@ -32,6 +32,7 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
     //TEAM 타입만 카운트
     long countByUserAndRoleAndWorkspaceType(Users user, WorkspaceRole role, WorkspaceType type);
 
+    Optional<WorkspaceMember> findByWorkspaceWorkspaceIdAndUserUserId(Long workspaceId, Long userId);
 
     long countByWorkspace(Workspace workspace);
 }
