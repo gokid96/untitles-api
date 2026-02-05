@@ -2,7 +2,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 // ─── 환경변수 ───
-const BASE_URL     = __ENV.BASE_URL     || 'http://172.29.96.1:8070';
+const BASE_URL     = __ENV.BASE_URL;
 const SESSION_ID   = __ENV.SESSION_ID;
 const WORKSPACE_ID = __ENV.WORKSPACE_ID || '1';
 const POST_ID      = __ENV.POST_ID      || '3';
