@@ -23,3 +23,12 @@ logging:
 app:
   oauth2:
     redirect-uri: https://untitles.net
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

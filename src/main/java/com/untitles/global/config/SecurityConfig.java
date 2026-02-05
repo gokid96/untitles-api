@@ -40,7 +40,8 @@ public class SecurityConfig {
             "/api/v1/email/**",
             "/oauth2/**",
             "/login/oauth2/**",
-            "/error"
+            "/error",
+            "/actuator/**"
     };
 
     @Bean

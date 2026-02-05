@@ -76,6 +76,22 @@ server:
         same-site: lax
         max-age: 3600
 
+# 모니터링용 메트릭 수집, 엔드포인트 자동 추가
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, metrics, prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+    tags:
+      application: untitles-api
+
 aws:
   ses:
     access-key: ${AWS_ACCESS_KEY}
