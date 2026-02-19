@@ -1,119 +1,122 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
-import { Rate, Trend, Counter } from 'k6/metrics';
+import { check, sleep, group } from 'k6';
 
-// ─── 환경변수 ───
-const BASE_URL     = __ENV.BASE_URL;
-const SESSION_ID   = __ENV.SESSION_ID;
-const WORKSPACE_ID = __ENV.WORKSPACE_ID || '1';
-const POST_ID      = __ENV.POST_ID      || '3';
+// ============================================================
+//  untitles-api k6 Load Test
+//  실제 사용자 시나리오 시뮬레이션 (CRUD 포함)
+// ============================================================
 
-// ─── 커스텀 메트릭 ───
-const treeDuration   = new Trend('tree_duration',   true);  // 트리 조회 응답시간
-const detailDuration = new Trend('detail_duration', true);  // 상세 조회 응답시간
-const editDuration   = new Trend('edit_duration',   true);  // 수정 응답시간
-const editConflict   = new Rate('edit_conflict');            // 409 비율
-const errorCount     = new Counter('error_count');           // 예상 외 에러
+const BASE_URL = 'https://api.untitles.net';
 
-// ─── Load 시나리오: 10 → 50 → 50 유지 → 0 ───
-export const options = {
-    stages: [
-        { duration: '30s', target: 10 },   // warm-up
-        { duration: '30s', target: 50 },   // ramp-up
-        { duration: '2m',  target: 50 },   // steady-state (핵심 구간)
-        { duration: '30s', target: 0  },   // cool-down
-    ],
-    thresholds: {
-        http_req_duration: ['p(95)<3000'],  // 95% 요청이 3초 이내
-        checks:            ['rate>0.8'],    // check 통과율 80% 이상
-    },
+const TEST_USER = {
+  loginId: 'admin',
+  password: 'tjdals45!',
 };
 
-function getParams() {
-    return {
-        headers: { 'Content-Type': 'application/json' },
-        cookies: { JSESSIONID: SESSION_ID },
-    };
-}
+export const options = {
+  stages: [
+    { duration: '1m', target: 10 },   // 10명까지 증가
+    { duration: '3m', target: 10 },   // 10명 유지
+    { duration: '1m', target: 20 },   // 20명까지 증가
+    { duration: '3m', target: 20 },   // 20명 유지
+    { duration: '1m', target: 0 },    // 종료
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<1500'],
+    http_req_failed: ['rate<0.05'],
+  },
+};
+
+const PARAMS = { headers: { 'Content-Type': 'application/json' } };
 
 export default function () {
-    const params = getParams();
 
-    // ── 1) 트리 조회 ──
-    const treeRes = http.get(
-        `${BASE_URL}/api/v1/workspaces/${WORKSPACE_ID}/folders`,
-        Object.assign({}, params, { tags: { name: 'GET /folders' } })
+  // 1. 로그인
+  group('01_로그인', () => {
+    const res = http.post(
+      `${BASE_URL}/api/v1/auth/login`,
+      JSON.stringify(TEST_USER),
+      PARAMS
     );
-    treeDuration.add(treeRes.timings.duration);
+    check(res, { '로그인 200': (r) => r.status === 200 });
+  });
+  sleep(1);
 
-    const treeOk = check(treeRes, {
-        'tree: status 200': (r) => r.status === 200,
-    });
+  // 2. 내 정보 조회
+  group('02_내정보_조회', () => {
+    const res = http.get(`${BASE_URL}/api/v1/auth/me`, PARAMS);
+    check(res, { '내정보 200': (r) => r.status === 200 });
+  });
+  sleep(1);
 
-    if (!treeOk) {
-        errorCount.add(1);
-        console.log(`VU ${__VU}: tree failed status=${treeRes.status}`);
-        sleep(1);
-        return;
+  // 3. 워크스페이스 목록
+  let workspaceId;
+  group('03_워크스페이스_목록', () => {
+    const res = http.get(`${BASE_URL}/api/v1/workspaces`, PARAMS);
+    check(res, { '워크스페이스목록 200': (r) => r.status === 200 });
+    const body = res.json();
+    const list = body.data || body;
+    if (Array.isArray(list) && list.length > 0) {
+      workspaceId = list[0].workspaceId || list[0].id;
     }
+  });
+  sleep(1);
 
-    sleep(0.5 + Math.random() * 0.5);  // 사용자가 트리를 보는 시간 (0.5~1초)
-
-    // ── 2) 상세 조회 ──
-    const detailRes = http.get(
-        `${BASE_URL}/api/v1/workspaces/${WORKSPACE_ID}/posts/${POST_ID}`,
-        Object.assign({}, params, { tags: { name: 'GET /posts/{id}' } })
-    );
-    detailDuration.add(detailRes.timings.duration);
-
-    const detailOk = check(detailRes, {
-        'detail: status 200': (r) => r.status === 200,
+  if (workspaceId) {
+    // 4. 폴더 트리 조회
+    group('04_폴더트리_조회', () => {
+      const res = http.get(`${BASE_URL}/api/v1/workspaces/${workspaceId}/folders`, PARAMS);
+      check(res, { '폴더트리 200': (r) => r.status === 200 });
     });
+    sleep(1);
 
-    if (!detailOk) {
-        errorCount.add(1);
-        console.log(`VU ${__VU}: detail failed status=${detailRes.status}`);
-        sleep(1);
-        return;
-    }
-
-    // version 추출
-    let version = 0;
-    try {
-        version = JSON.parse(detailRes.body).data.version;
-    } catch (e) {
-        errorCount.add(1);
-        console.log(`VU ${__VU}: version 파싱 실패`);
-        sleep(1);
-        return;
-    }
-
-    sleep(1 + Math.random());  // 사용자가 글을 읽는 시간 (1~2초)
-
-    // ── 3) 수정 ──
-    const payload = JSON.stringify({
-        title:   `Load VU${__VU} iter${__ITER}`,
-        content: `부하 테스트 — ${new Date().toISOString()}`,
-        version: version,
-    });
-
-    const editRes = http.put(
-        `${BASE_URL}/api/v1/workspaces/${WORKSPACE_ID}/posts/${POST_ID}`,
+    // 5. 게시글 생성
+    let postId;
+    group('05_게시글_생성', () => {
+      const payload = JSON.stringify({
+        title: 'k6 load test ' + Date.now(),
+        content: '<p>k6 부하 테스트 내용</p>',
+        folderId: null,
+      });
+      const res = http.post(
+        `${BASE_URL}/api/v1/workspaces/${workspaceId}/posts`,
         payload,
-        Object.assign({}, params, { tags: { name: 'PUT /posts/{id}' } })
-    );
-    editDuration.add(editRes.timings.duration);
-    editConflict.add(editRes.status === 409);
-
-    check(editRes, {
-        'edit: 200 or 409': (r) => r.status === 200 || r.status === 409,
+        PARAMS
+      );
+      check(res, { '게시글생성 200': (r) => r.status === 200 });
+      const body = res.json();
+      postId = body.data ? body.data.postId : body.postId;
     });
+    sleep(1);
 
-    if (editRes.status !== 200 && editRes.status !== 409) {
-        errorCount.add(1);
-        console.log(`VU ${__VU}: edit unexpected status=${editRes.status}`);
+    // 6. 게시글 조회
+    if (postId) {
+      group('06_게시글_조회', () => {
+        const res = http.get(
+          `${BASE_URL}/api/v1/workspaces/${workspaceId}/posts/${postId}`,
+          PARAMS
+        );
+        check(res, { '게시글조회 200': (r) => r.status === 200 });
+      });
+      sleep(1);
+
+      // 7. 게시글 삭제
+      group('07_게시글_삭제', () => {
+        const res = http.del(
+          `${BASE_URL}/api/v1/workspaces/${workspaceId}/posts/${postId}`,
+          null,
+          PARAMS
+        );
+        check(res, { '게시글삭제 204': (r) => r.status === 204 });
+      });
+      sleep(0.5);
     }
+  }
 
-    // ── 4) think time ──
-    sleep(1 + Math.random());  // 다음 행동까지 대기 (1~2초)
+  // 8. 로그아웃
+  group('08_로그아웃', () => {
+    const res = http.post(`${BASE_URL}/api/v1/auth/logout`, null, PARAMS);
+    check(res, { '로그아웃 200': (r) => r.status === 200 });
+  });
+  sleep(1);
 }

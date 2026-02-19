@@ -1,115 +1,76 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
-import { Rate, Trend, Counter } from 'k6/metrics';
+import { check, sleep, group } from 'k6';
 
-// ─── 환경변수 ───
-const BASE_URL     = __ENV.BASE_URL     || 'http://localhost:8070';
-const SESSION_ID   = __ENV.SESSION_ID;
-const WORKSPACE_ID = __ENV.WORKSPACE_ID || '1';
-const POST_ID      = __ENV.POST_ID      || '3';
+// ============================================================
+//  untitles-api k6 Stress Test
+//  서버 한계점 찾기
+// ============================================================
 
-// ─── 커스텀 메트릭 ───
-const treeDuration   = new Trend('tree_duration',   true);
-const detailDuration = new Trend('detail_duration', true);
-const editDuration   = new Trend('edit_duration',   true);
-const editConflict   = new Rate('edit_conflict');
-const errorCount     = new Counter('error_count');
+const BASE_URL = 'https://api.untitles.net';
 
-// ─── Stress 시나리오: 50 → 100 → 200 → 0 ───
-export const options = {
-    stages: [
-        { duration: '30s',  target: 50  },   // Load에서 안정적이었던 구간
-        { duration: '1m',   target: 100 },   // 2배로 증가
-        { duration: '2m',   target: 100 },   // 100명 유지 — 여기서 버티는지 관찰
-        { duration: '1m',   target: 200 },   // 한계 탐색
-        { duration: '2m',   target: 200 },   // 200명 유지 — 터지는 지점 확인
-        { duration: '30s',  target: 0   },   // cool-down
-    ],
-    thresholds: {
-        http_req_duration: ['p(95)<5000'],  // 5초까지 허용 (한계 탐색이니까 느슨하게)
-        checks:            ['rate>0.6'],    // 60% 이상 통과
-    },
+const TEST_USER = {
+  loginId: 'admin',
+  password: 'tjdals45!',
 };
 
-function getParams() {
-    return {
-        headers: { 'Content-Type': 'application/json' },
-        cookies: { JSESSIONID: SESSION_ID },
-    };
-}
+export const options = {
+  stages: [
+    { duration: '30s',  target: 50  },   // Load에서 안정적이었던 구간
+    { duration: '1m',   target: 100 },   // 2배로 증가
+    { duration: '2m',   target: 100 },   // 100명 유지 — 여기서 버티는지 관찰
+    { duration: '1m',   target: 200 },   // 한계 탐색
+    { duration: '2m',   target: 200 },   // 200명 유지 — 터지는 지점 확인
+    { duration: '30s',  target: 0   },   // cool-down
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<5000'],  // 5초까지 허용 (한계 탐색)
+    http_req_failed: ['rate<0.20'],     // 20% 이내
+  },
+};
+
+const PARAMS = { headers: { 'Content-Type': 'application/json' } };
 
 export default function () {
-    const params = getParams();
 
-    // ── 1) 트리 조회 ──
-    const treeRes = http.get(
-        `${BASE_URL}/api/v1/workspaces/${WORKSPACE_ID}/folders`,
-        Object.assign({}, params, { tags: { name: 'GET /folders' } })
+  group('01_로그인', () => {
+    const res = http.post(
+      `${BASE_URL}/api/v1/auth/login`,
+      JSON.stringify(TEST_USER),
+      PARAMS
     );
-    treeDuration.add(treeRes.timings.duration);
+    check(res, { '로그인 200': (r) => r.status === 200 });
+  });
+  sleep(0.5);
 
-    const treeOk = check(treeRes, {
-        'tree: status 200': (r) => r.status === 200,
-    });
+  group('02_내정보', () => {
+    const res = http.get(`${BASE_URL}/api/v1/auth/me`, PARAMS);
+    check(res, { '내정보 200': (r) => r.status === 200 });
+  });
+  sleep(0.5);
 
-    if (!treeOk) {
-        errorCount.add(1);
-        sleep(1);
-        return;
+  let workspaceId;
+  group('03_워크스페이스목록', () => {
+    const res = http.get(`${BASE_URL}/api/v1/workspaces`, PARAMS);
+    check(res, { '워크스페이스 200': (r) => r.status === 200 });
+    const body = res.json();
+    const list = body.data || body;
+    if (Array.isArray(list) && list.length > 0) {
+      workspaceId = list[0].workspaceId || list[0].id;
     }
+  });
+  sleep(0.5);
 
-    sleep(0.5 + Math.random() * 0.5);
-
-    // ── 2) 상세 조회 ──
-    const detailRes = http.get(
-        `${BASE_URL}/api/v1/workspaces/${WORKSPACE_ID}/posts/${POST_ID}`,
-        Object.assign({}, params, { tags: { name: 'GET /posts/{id}' } })
-    );
-    detailDuration.add(detailRes.timings.duration);
-
-    const detailOk = check(detailRes, {
-        'detail: status 200': (r) => r.status === 200,
+  if (workspaceId) {
+    group('04_폴더트리', () => {
+      const res = http.get(`${BASE_URL}/api/v1/workspaces/${workspaceId}/folders`, PARAMS);
+      check(res, { '폴더트리 200': (r) => r.status === 200 });
     });
+    sleep(0.5);
+  }
 
-    if (!detailOk) {
-        errorCount.add(1);
-        sleep(1);
-        return;
-    }
-
-    let version = 0;
-    try {
-        version = JSON.parse(detailRes.body).data.version;
-    } catch (e) {
-        errorCount.add(1);
-        sleep(1);
-        return;
-    }
-
-    sleep(1 + Math.random());
-
-    // ── 3) 수정 ──
-    const payload = JSON.stringify({
-        title:   `Stress VU${__VU} iter${__ITER}`,
-        content: `스트레스 테스트 — ${new Date().toISOString()}`,
-        version: version,
-    });
-
-    const editRes = http.put(
-        `${BASE_URL}/api/v1/workspaces/${WORKSPACE_ID}/posts/${POST_ID}`,
-        payload,
-        Object.assign({}, params, { tags: { name: 'PUT /posts/{id}' } })
-    );
-    editDuration.add(editRes.timings.duration);
-    editConflict.add(editRes.status === 409);
-
-    check(editRes, {
-        'edit: 200 or 409': (r) => r.status === 200 || r.status === 409,
-    });
-
-    if (editRes.status !== 200 && editRes.status !== 409) {
-        errorCount.add(1);
-    }
-
-    sleep(1 + Math.random());
+  group('05_로그아웃', () => {
+    const res = http.post(`${BASE_URL}/api/v1/auth/logout`, null, PARAMS);
+    check(res, { '로그아웃 200': (r) => r.status === 200 });
+  });
+  sleep(0.5);
 }

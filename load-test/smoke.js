@@ -1,81 +1,91 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
+import { check, sleep, group } from 'k6';
 
-// ─── 환경변수 ───
-const BASE_URL     = __ENV.BASE_URL;
-const SESSION_ID   = __ENV.SESSION_ID;
-const WORKSPACE_ID = __ENV.WORKSPACE_ID || '1';
-const POST_ID      = __ENV.POST_ID      || '3';
+// ============================================================
+//  untitles-api k6 Smoke Test
+//  세션 기반 인증 → 주요 API 흐름 테스트
+// ============================================================
 
-// ─── Smoke: VU 1명, 1회 실행 ───
-export const options = {
-    vus: 1,
-    iterations: 1,
-    thresholds: {
-        checks: ['rate==1.0'],  // 모든 check 통과해야 성공
-    },
+const BASE_URL = 'https://api.untitles.net';
+
+const TEST_USER = {
+  loginId: 'admin',
+  password: 'tjdals45!',
 };
 
-function getParams() {
-    return {
-        headers: { 'Content-Type': 'application/json' },
-        cookies: { JSESSIONID: SESSION_ID },
-    };
-}
+export const options = {
+  stages: [
+    { duration: '30s', target: 3 },
+    { duration: '1m', target: 3 },
+    { duration: '30s', target: 0 },
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<1000'],
+    http_req_failed: ['rate<0.05'],
+  },
+};
+
+const PARAMS = { headers: { 'Content-Type': 'application/json' } };
 
 export default function () {
-    const params = getParams();
 
-    // ── Step 1: 트리(폴더) 조회 ──
-    console.log('── Step 1: 트리 조회');
-    const treeRes = http.get(
-        `${BASE_URL}/api/v1/workspaces/${WORKSPACE_ID}/folders`,
-        params
+  // 1. 로그인
+  group('01_로그인', () => {
+    const res = http.post(
+      `${BASE_URL}/api/v1/auth/login`,
+      JSON.stringify(TEST_USER),
+      PARAMS
     );
-    check(treeRes, {
-        'tree: status 200': (r) => r.status === 200,
-        'tree: body not empty': (r) => r.body && r.body.length > 0,
+    check(res, {
+      '로그인 200': (r) => r.status === 200,
     });
-    console.log(`   status=${treeRes.status}  duration=${treeRes.timings.duration}ms`);
+  });
+  sleep(1);
+
+  // 2. 내 정보 확인
+  group('02_내정보_조회', () => {
+    const res = http.get(`${BASE_URL}/api/v1/auth/me`, PARAMS);
+    const body = res.json();
+    check(res, {
+      '내정보 200': (r) => r.status === 200,
+      '인증됨': () => body.data.authenticated === true,
+    });
+  });
+  sleep(1);
+
+  // 3. 워크스페이스 목록
+  let workspaceId;
+  group('03_워크스페이스_목록', () => {
+    const res = http.get(`${BASE_URL}/api/v1/workspaces`, PARAMS);
+    check(res, { '워크스페이스목록 200': (r) => r.status === 200 });
+    const body = res.json();
+    const list = body.data || body;
+    if (Array.isArray(list) && list.length > 0) {
+      workspaceId = list[0].workspaceId || list[0].id;
+    }
+  });
+  sleep(1);
+
+  if (workspaceId) {
+    // 4. 워크스페이스 상세
+    group('04_워크스페이스_상세', () => {
+      const res = http.get(`${BASE_URL}/api/v1/workspaces/${workspaceId}`, PARAMS);
+      check(res, { '워크스페이스상세 200': (r) => r.status === 200 });
+    });
     sleep(0.5);
 
-    // ── Step 2: 게시글 상세 조회 ──
-    console.log('── Step 2: 상세 조회');
-    const detailRes = http.get(
-        `${BASE_URL}/api/v1/workspaces/${WORKSPACE_ID}/posts/${POST_ID}`,
-        params
-    );
-
-    let version = 0;
-    check(detailRes, {
-        'detail: status 200': (r) => r.status === 200,
-        'detail: has version': (r) => {
-            try {
-                version = JSON.parse(r.body).data.version;
-                return version !== undefined;
-            } catch { return false; }
-        },
+    // 5. 폴더 트리 조회
+    group('05_폴더트리_조회', () => {
+      const res = http.get(`${BASE_URL}/api/v1/workspaces/${workspaceId}/folders`, PARAMS);
+      check(res, { '폴더트리 200': (r) => r.status === 200 });
     });
-    console.log(`   status=${detailRes.status}  duration=${detailRes.timings.duration}ms  version=${version}`);
-    sleep(0.5);
+    sleep(1);
+  }
 
-    // ── Step 3: 게시글 수정 ──
-    console.log('── Step 3: 수정');
-    const payload = JSON.stringify({
-        title: `Smoke 테스트 ${new Date().toISOString()}`,
-        content: 'Smoke 테스트 — 기본 흐름 확인',
-        version: version,
-    });
-    const editRes = http.put(
-        `${BASE_URL}/api/v1/workspaces/${WORKSPACE_ID}/posts/${POST_ID}`,
-        payload,
-        params
-    );
-    check(editRes, {
-        'edit: status 200': (r) => r.status === 200,
-    });
-    console.log(`   status=${editRes.status}  duration=${editRes.timings.duration}ms`);
-
-    console.log('');
-    console.log('✅ Smoke 완료 — 모든 check 통과하면 Load 테스트 진행 가능');
+  // 6. 로그아웃
+  group('06_로그아웃', () => {
+    const res = http.post(`${BASE_URL}/api/v1/auth/logout`, null, PARAMS);
+    check(res, { '로그아웃 200': (r) => r.status === 200 });
+  });
+  sleep(1);
 }

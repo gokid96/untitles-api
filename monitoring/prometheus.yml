@@ -2,7 +2,11 @@ global:
   scrape_interval: 5s
 
 scrape_configs:
+  # Spring Boot Actuator (EC2)
   - job_name: 'untitles-api'
     metrics_path: '/actuator/prometheus'
+    scheme: https
     static_configs:
-      - targets: ['172.29.96.1:8070']
+      - targets: ['api.untitles.net']
+        labels:
+          environment: 'production'
