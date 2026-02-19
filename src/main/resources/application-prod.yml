@@ -21,6 +21,7 @@ logging:
     org.hibernate.SQL: warn
 
 app:
+  public-base-url: https://untitles.net
   oauth2:
     redirect-uri: https://untitles.net
 

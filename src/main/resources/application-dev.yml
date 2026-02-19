@@ -8,6 +8,9 @@ spring:
     hibernate:
       ddl-auto: update
 
+app:
+  public-base-url: http://localhost:5173
+
 logging:
   level:
     org.hibernate.SQL: debug

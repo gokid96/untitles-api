@@ -57,4 +57,19 @@ public class Workspace {
     public void updateDescription(String description) {
         this.description = description;
     }
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean publishAll = false; //전체공개
+
+    @Column(unique = true, length = 100)
+    private String publicSlug; //공개 URL 슬러그 (예: "my-workspace")
+
+    public void updatePublishAll(Boolean publishAll) {
+        this.publishAll = publishAll;
+    }
+
+    public void updatePublicSlug(String publicSlug) {
+        this.publicSlug = publicSlug;
+    }
 }

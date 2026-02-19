@@ -12,13 +12,12 @@ import java.util.Optional;
 public interface FolderRepository extends JpaRepository<Folder, Long> {
     // 워크스페이스 + 폴더 ID로 조회 (권한 체크용)
     Optional<Folder> findByFolderIdAndWorkspaceWorkspaceId(Long folderId, Long workspaceId);
-
+    List<Folder> findAllByWorkspaceWorkspaceId(Long workspaceId);
     // 폴더과 게시글 한번에 조회
     @Query("SELECT DISTINCT f FROM Folder f " +
             "LEFT JOIN FETCH f.posts " +
             "WHERE f.workspace.workspaceId = :workspaceId"
     )
     List<Folder> findAllByWorkspaceIdWithPosts(@Param("workspaceId") Long workspaceId);
-
     long countByWorkspace(Workspace workspace);
 }

@@ -63,4 +63,20 @@ public class Post {
     public void updateFolder(Folder folder) {
         this.folder = folder;
     }
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isPublic = false;  // 개별 공개
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isExcluded = false;  // 전체공개 시 제외
+
+    public void updateIsPublic(Boolean isPublic) {
+        this.isPublic = isPublic;
+    }
+
+    public void updateIsExcluded(Boolean isExcluded) {
+        this.isExcluded = isExcluded;
+    }
 }

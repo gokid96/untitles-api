@@ -34,9 +34,11 @@ public class FolderResponseDTO {
                 .createdAt(folder.getCreatedAt())
                 .updatedAt(folder.getUpdatedAt())
                 .children(new ArrayList<>())
-                .posts(folder.getPosts().stream()
-                        .map(PostSimpleDTO::from)
-                        .collect(Collectors.toList()))
+                .posts(folder.getPosts() != null
+                        ? folder.getPosts().stream()
+                                .map(PostSimpleDTO::from)
+                                .collect(Collectors.toList())
+                        : new ArrayList<>())
                 .build();
     }
 
