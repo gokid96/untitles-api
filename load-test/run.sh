@@ -39,6 +39,24 @@ case "$1" in
   stress)
     run_test "stress" "${SCRIPT_DIR}/stress.js"
     ;;
+  spike)
+    run_test "spike" "${SCRIPT_DIR}/spike.js"
+    ;;
+  stress-session)
+    run_test "stress-session" "${SCRIPT_DIR}/stress-session.js"
+    ;;
+  spike-session)
+    run_test "spike-session" "${SCRIPT_DIR}/spike-session.js"
+    ;;
+  real)
+    run_test "real-usage" "${SCRIPT_DIR}/scenario-real-usage.js"
+    ;;
+  soak)
+    run_test "soak" "${SCRIPT_DIR}/soak.js"
+    ;;
+  multi)
+    run_test "multi-user" "${SCRIPT_DIR}/multi-user-real.js"
+    ;;
   all)
     run_test "smoke" "${SCRIPT_DIR}/smoke.js"
     echo "30초 대기 후 Load Test 시작..."
@@ -47,9 +65,12 @@ case "$1" in
     echo "30초 대기 후 Stress Test 시작..."
     sleep 30
     run_test "stress" "${SCRIPT_DIR}/stress.js"
+    echo "30초 대기 후 Spike Test 시작..."
+    sleep 30
+    run_test "spike" "${SCRIPT_DIR}/spike.js"
     ;;
   *)
-    echo "사용법: $0 {smoke|load|stress|all}"
+    echo "사용법: $0 {smoke|load|stress|spike|stress-session|spike-session|real|all}"
     exit 1
     ;;
 esac

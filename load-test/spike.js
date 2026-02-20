@@ -2,8 +2,8 @@ import http from 'k6/http';
 import { check, sleep, group } from 'k6';
 
 // ============================================================
-//  untitles-api k6 Stress Test
-//  VU 50→100→200명 — 한계점까지 올려서 어디서 터지는지 확인
+//  untitles-api k6 Spike Test
+//  VU 10→200 급등→10 — 갑자기 트래픽이 몰리는 상황 시뮬레이션
 // ============================================================
 
 const BASE_URL = 'https://api.untitles.net';
@@ -15,12 +15,12 @@ const TEST_USER = {
 
 export const options = {
   stages: [
-    { duration: '30s', target: 50  },   // baseline
-    { duration: '1m',  target: 100 },   // ramp-up
-    { duration: '2m',  target: 100 },   // 100명 유지
-    { duration: '1m',  target: 200 },   // 한계 탐색
-    { duration: '2m',  target: 200 },   // 200명 유지
-    { duration: '30s', target: 0   },   // cool-down
+    { duration: '30s', target: 10  },   // 평소 트래픽
+    { duration: '10s', target: 200 },   // 급등! (10초 만에 200명)
+    { duration: '1m',  target: 200 },   // 폭주 유지
+    { duration: '10s', target: 10  },   // 급감
+    { duration: '30s', target: 10  },   // 회복 관찰
+    { duration: '20s', target: 0   },   // cool-down
   ],
   thresholds: {
     http_req_duration: ['p(95)<5000'],
