@@ -40,6 +40,10 @@ export function randomPick(arr) {
 //  로그인 + 시드 데이터 생성 (setup용)
 // ============================================================
 export function loginAndSeed(folderCount, postCount) {
+  // jar 초기화 후 로그인 (새 세션 받기)
+  const jar = http.cookieJar();
+  jar.clear(`${BASE_URL}`);
+
   const loginRes = http.post(
     `${BASE_URL}/api/v1/auth/login`,
     JSON.stringify(TEST_USER),
@@ -47,18 +51,14 @@ export function loginAndSeed(folderCount, postCount) {
   );
   check(loginRes, { 'setup 로그인 200': (r) => r.status === 200 });
 
-  // 세션 쿠키 추출
-  // 세션 쿠키 추출 (res.cookies 사용)
+  // jar에서 세션 쿠키 추출
+  const cookies = jar.cookiesForURL(`${BASE_URL}`);
   let sessionCookie = '';
-  if (loginRes.cookies['JSESSIONID'] && loginRes.cookies['JSESSIONID'].length > 0) {
-    sessionCookie = 'JSESSIONID=' + loginRes.cookies['JSESSIONID'][0].value;
+  if (cookies['JSESSIONID'] && cookies['JSESSIONID'].length > 0) {
+    sessionCookie = 'JSESSIONID=' + cookies['JSESSIONID'][0];
   }
-  if (!sessionCookie) {
-    const jar = http.cookieJar();
-    const cookies = jar.cookiesForURL(`${BASE_URL}`);
-    if (cookies['JSESSIONID'] && cookies['JSESSIONID'].length > 0) {
-      sessionCookie = 'JSESSIONID=' + cookies['JSESSIONID'][0];
-    }
+  if (!sessionCookie && loginRes.cookies['JSESSIONID'] && loginRes.cookies['JSESSIONID'].length > 0) {
+    sessionCookie = 'JSESSIONID=' + loginRes.cookies['JSESSIONID'][0].value;
   }
   console.log(`세션쿠키: ${sessionCookie ? '성공' : '실패'}`);
 
