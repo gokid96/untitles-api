@@ -28,8 +28,6 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final FolderRepository folderRepository;
-    private final UserRepository userRepository;
-    private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final HtmlSanitizer htmlSanitizer;
 
@@ -142,12 +140,7 @@ public class PostService {
     }
 
     private WorkspaceMember getMemberOrThrow(Long userId, Long workspaceId) {
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
-        Users user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-        return workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+        return workspaceMemberRepository.findByWorkspaceWorkspaceIdAndUserUserId(workspaceId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCESS_DENIED));
     }
 
