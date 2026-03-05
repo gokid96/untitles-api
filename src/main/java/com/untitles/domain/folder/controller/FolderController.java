@@ -26,12 +26,26 @@ public class FolderController {
     /**
      * 워크스페이스 트리 조회 (폴더 + 게시글)
      */
+//    @GetMapping
+//    public ResponseEntity<WorkspaceTreeResponseDTO> getWorkspaceTree(
+//            @AuthenticationPrincipal CustomUserDetails userDetails,
+//            @PathVariable Long workspaceId){
+//        return ResponseEntity.ok(folderService.getRootFolders(userDetails.getUserId(), workspaceId));
+//    }
+
+    /**
+     * 루트 폴더 목록 조회
+     * 워크스페이스 트리 조회 (폴더 + 게시글)
+     */
     @GetMapping
-    public ResponseEntity<WorkspaceTreeResponseDTO> getWorkspaceTree(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long workspaceId){
-        return ResponseEntity.ok(folderService.getRootFolders(userDetails.getUserId(), workspaceId));
+    public ResponseEntity<List<FolderResponseDTO>> getRootFolders(
+                    @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long workspaceId) {
+        {
+            return ResponseEntity.ok(folderService.getRootFolders(userDetails.getUserId(), workspaceId));
+        }
     }
+
     /**
      * 폴더 생성
      */
