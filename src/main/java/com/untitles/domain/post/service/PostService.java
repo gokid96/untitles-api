@@ -17,13 +17,13 @@ import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.util.HtmlSanitizer;
-import jakarta.persistence.OptimisticLockException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PostService {
 
     private final PostRepository postRepository;
@@ -47,6 +47,7 @@ public class PostService {
     /**
      * 게시글 생성
      */
+    @Transactional
     public PostResponseDTO createPost(Long userId, Long workspaceId, PostCreateRequestDTO request) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -81,10 +82,10 @@ public class PostService {
         return PostResponseDTO.from(savedPost);
     }
 
-
     /**
      * 게시글 수정
      */
+    @Transactional
     public PostResponseDTO updatePost(Long userId, Long workspaceId, Long postId, PostUpdateRequestDTO request) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -92,10 +93,6 @@ public class PostService {
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
 
-        // 클라이언트 version과 DB version 비교
-        if (request.getVersion() != null && !request.getVersion().equals(post.getVersion())) {
-            throw new OptimisticLockException("다른 곳에서 수정되었습니다.");
-        }
 
         if (request.getTitle() != null) post.updateTitle(request.getTitle());
         if (request.getContent() != null) {
@@ -107,9 +104,11 @@ public class PostService {
         return PostResponseDTO.from(postRepository.saveAndFlush(post));
     }
 
+
     /**
      * 게시글 삭제
      */
+    @Transactional
     public void deletePost(Long userId, Long workspaceId, Long postId) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -123,6 +122,7 @@ public class PostService {
     /**
      * 게시글 이동 (폴더 변경)
      */
+    @Transactional
     public PostResponseDTO movePost(Long userId, Long workspaceId, Long postId, Long newFolderId) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
