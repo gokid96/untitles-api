@@ -10,8 +10,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface FolderRepository extends JpaRepository<Folder, Long> {
-    // 워크스페이스 + 폴더 ID로 조회 (권한 체크용)
+    // 워크스페이스에 속한 폴더를 ID로 조회(권한 체크)
     Optional<Folder> findByFolderIdAndWorkspaceWorkspaceId(Long folderId, Long workspaceId);
+
     List<Folder> findAllByWorkspaceWorkspaceId(Long workspaceId);
     // 폴더과 게시글 한번에 조회
     @Query("SELECT DISTINCT f FROM Folder f " +
@@ -19,5 +20,9 @@ public interface FolderRepository extends JpaRepository<Folder, Long> {
             "WHERE f.workspace.workspaceId = :workspaceId"
     )
     List<Folder> findAllByWorkspaceIdWithPosts(@Param("workspaceId") Long workspaceId);
+
+    // 워크스페이스의 루트 폴더들 조회
+    List<Folder> findByWorkspaceWorkspaceIdAndParentIsNull(Long workspaceId);
+
     long countByWorkspace(Workspace workspace);
 }
