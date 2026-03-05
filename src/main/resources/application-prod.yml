@@ -18,7 +18,8 @@ server:
 
 logging:
   level:
-    org.hibernate.SQL: warn
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
 
 app:
   public-base-url: https://untitles.net

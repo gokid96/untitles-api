@@ -27,28 +27,30 @@ public class FolderResponseDTO {
 
     /* 하위 폴더 + 게시글 포함 */
     public static FolderResponseDTO from(Folder folder) {
-//        return FolderResponseDTO.builder()
-//                .folderId(folder.getFolderId())
-//                .name(folder.getName())
-//                .parentId(folder.getParent() != null ? folder.getParent().getFolderId() : null)
-//                .createdAt(folder.getCreatedAt())
-//                .updatedAt(folder.getUpdatedAt())
-//                .children(new ArrayList<>())
-//                .posts(folder.getPosts() != null
-//                        ? folder.getPosts().stream()
-//                                .map(PostSimpleDTO::from)
-//                                .collect(Collectors.toList())
-//                        : new ArrayList<>())
-//                .build();
-
         return FolderResponseDTO.builder()
                 .folderId(folder.getFolderId())
                 .name(folder.getName())
                 .parentId(folder.getParent() != null ? folder.getParent().getFolderId() : null)
+                .createdAt(folder.getCreatedAt())
+                .updatedAt(folder.getUpdatedAt())
                 .children(folder.getChildren().stream()
                         .map(FolderResponseDTO::from)
                         .collect(Collectors.toList()))
+                .posts(folder.getPosts() != null
+                        ? folder.getPosts().stream()
+                        .map(PostSimpleDTO::from)
+                        .collect(Collectors.toList())
+                        : new ArrayList<>())
                 .build();
+
+//        return FolderResponseDTO.builder()
+//                .folderId(folder.getFolderId())
+//                .name(folder.getName())
+//                .parentId(folder.getParent() != null ? folder.getParent().getFolderId() : null)
+//                .children(folder.getChildren().stream()
+//                        .map(FolderResponseDTO::from)
+//                        .collect(Collectors.toList()))
+//                .build();
     }
 
 }
