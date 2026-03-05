@@ -40,6 +40,14 @@ public class FolderResponseDTO {
                                 .collect(Collectors.toList())
                         : new ArrayList<>())
                 .build();
+//        return FolderResponseDTO.builder()
+//                .folderId(folder.getFolderId())
+//                .name(folder.getName())
+//                .parentId(folder.getParent() != null ? folder.getParent().getFolderId() : null)
+//                .children(folder.getChildren().stream()
+//                        .map(FolderResponseDTO::from)
+//                        .collect(Collectors.toList()))
+//                .build();
     }
 
 }
