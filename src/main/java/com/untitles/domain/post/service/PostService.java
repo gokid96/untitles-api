@@ -38,7 +38,6 @@ public class PostService {
      */
     public PostResponseDTO getPost(Long userId, Long workspaceId, Long postId) {
         getMemberOrThrow(userId, workspaceId);
-
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
         return PostResponseDTO.from(post);
@@ -142,15 +141,15 @@ public class PostService {
     }
 
     private WorkspaceMember getMemberOrThrow(Long userId, Long workspaceId) {
-        Workspace workspace = workspaceRepository.findById(workspaceId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
-        Users user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-        return workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
-//        return workspaceMemberRepository.findByWorkspaceWorkspaceIdAndUserUserId(workspaceId, userId)
-//                .orElseThrow(() -> new BusinessException(ErrorCode.ACCESS_DENIED));
+//        Workspace workspace = workspaceRepository.findById(workspaceId)
+//                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
+//        Users user = userRepository.findById(userId)
+//                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+//
+//        return workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
+//                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
+       return workspaceMemberRepository.findByWorkspaceWorkspaceIdAndUserUserId(workspaceId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCESS_DENIED));
     }
 
     private void checkWritePermission(WorkspaceMember member) {
