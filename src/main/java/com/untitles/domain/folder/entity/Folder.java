@@ -46,7 +46,6 @@ public class Folder {
     private LocalDateTime updatedAt;
 
     // 양방향 - 하위 폴더들
-    @BatchSize(size = 100)
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Folder> children = new ArrayList<>();
 
