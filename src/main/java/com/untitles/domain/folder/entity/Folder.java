@@ -46,12 +46,10 @@ public class Folder {
     private LocalDateTime updatedAt;
 
     // 양방향 - 하위 폴더들
-    @BatchSize(size = 100)
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Folder> children = new ArrayList<>();
 
     // 양방향 - 폴더 내 게시글들
-    @BatchSize(size = 100)
     @OneToMany(mappedBy = "folder", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Post> posts = new ArrayList<>();
 
