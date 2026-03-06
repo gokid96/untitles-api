@@ -240,6 +240,8 @@ public class WorkspaceService {
 
         return workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCESS_DENIED));
+        //       return workspaceMemberRepository.findByWorkspaceWorkspaceIdAndUserUserId(workspaceId, userId)
+//               .orElseThrow(() -> new BusinessException(ErrorCode.ACCESS_DENIED));
     }
 
     private void checkPermission(WorkspaceMember member, WorkspaceRole requiredRole) {
