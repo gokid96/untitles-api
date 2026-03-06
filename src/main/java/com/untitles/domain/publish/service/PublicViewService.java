@@ -2,9 +2,11 @@ package com.untitles.domain.publish.service;
 
 import com.untitles.domain.folder.entity.Folder;
 import com.untitles.domain.folder.repository.FolderRepository;
+import com.untitles.domain.post.dto.response.PostSimpleDTO;
 import com.untitles.domain.post.entity.Post;
 import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.publish.dto.response.PublicWorkspaceResponse;
+import com.untitles.domain.publish.dto.response.PublicWorkspaceResponse.PublicFolderItem;
 import com.untitles.domain.workspace.entity.Workspace;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
@@ -13,10 +15,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+
 
 @Service
 @RequiredArgsConstructor
@@ -28,19 +31,56 @@ public class PublicViewService {
 
     /**
      * 공개 워크스페이스 조회 (비로그인)
+     * - 내부용 /workspaces/{workspaceId}/folders 와 동일한 흐름
+     *   ① 루트 폴더 조회 + Lazy Loading (children/posts)
+     *   ② 루트 게시글 조회 (폴더 없는 공개 게시글)
+     * - 공개 설정 판단은 폴더/게시글의 publishAll, isPublic, isExcluded 필드로 처리
      */
     @Transactional(readOnly = true)
     public PublicWorkspaceResponse getPublicWorkspace(String slug) {
         Workspace workspace = workspaceRepository.findByPublicSlug(slug)
                 .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
 
-        List<Post> visiblePosts = getVisiblePosts(workspace);
+        // 공개 판단에 필요한 폴더 Map (publishAll 체크용)
+        Map<Long, Folder> folderMap = folderRepository
+                .findAllByWorkspaceWorkspaceId(workspace.getWorkspaceId())
+                .stream()
+                .collect(Collectors.toMap(Folder::getFolderId, f -> f));
 
-        if (visiblePosts.isEmpty()) {
-            throw new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND);  // 공개 콘텐츠 없음
+        // 공개 게시글 ID Set
+        List<Post> allPosts = postRepository
+                .findAllWithAuthorByWorkspaceWorkspaceId(workspace.getWorkspaceId());
+
+        Set<Long> visiblePostIds = allPosts.stream()
+                .filter(post -> isPostVisible(post, workspace, folderMap))
+                .map(Post::getPostId)
+                .collect(Collectors.toSet());
+
+        if (visiblePostIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.PUBLIC_CONTENT_NOT_FOUND);
         }
 
-        return buildPublicResponse(workspace, visiblePosts);
+        // 루트 폴더 조회 → Lazy Loading으로 children/posts 트리 구성 (내부용과 동일한 방식)
+        List<Folder> rootFolders = folderRepository
+                .findByWorkspaceWorkspaceIdAndParentIsNull(workspace.getWorkspaceId());
+
+        List<PublicFolderItem> folderTree = rootFolders.stream()
+                .map(folder -> PublicFolderItem.from(folder, visiblePostIds))
+                .collect(Collectors.toList());
+
+        // 루트 게시글 (폴더 없는 공개 게시글)
+        List<PostSimpleDTO> rootPosts = postRepository
+                .findByWorkspaceWorkspaceIdAndFolderIsNull(workspace.getWorkspaceId())
+                .stream()
+                .filter(p -> visiblePostIds.contains(p.getPostId()))
+                .map(PostSimpleDTO::from)
+                .collect(Collectors.toList());
+
+        return PublicWorkspaceResponse.of(
+                workspace.getName(),
+                workspace.getDescription(),
+                folderTree,
+                rootPosts);
     }
 
     /**
@@ -51,11 +91,10 @@ public class PublicViewService {
         Workspace workspace = workspaceRepository.findByPublicSlug(slug)
                 .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
 
-        // 워크스페이스 소속 확인
-        Post post = postRepository.findWithAuthorByPostIdAndWorkspaceWorkspaceId(postId, workspace.getWorkspaceId())
+        Post post = postRepository
+                .findWithAuthorByPostIdAndWorkspaceWorkspaceId(postId, workspace.getWorkspaceId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
 
-        // 폴더 맵을 한 번만 조회하여 재사용
         Map<Long, Folder> folderMap = folderRepository
                 .findAllByWorkspaceWorkspaceId(workspace.getWorkspaceId())
                 .stream()
@@ -75,50 +114,29 @@ public class PublicViewService {
                 .build();
     }
 
+    // ────────────────────────────────────────────────
+    // Private helpers
+    // ────────────────────────────────────────────────
+
     /**
-     * 공개 가능한 게시글 필터링 (핵심 로직)
+     * 특정 게시글이 공개 상태인지 확인
      */
-    private List<Post> getVisiblePosts(Workspace workspace) {
-        List<Post> allPosts = postRepository.findAllWithAuthorByWorkspaceWorkspaceId(
-                workspace.getWorkspaceId());
-
-        // 1. 워크스페이스 전체공개
+    private boolean isPostVisible(Post post, Workspace workspace, Map<Long, Folder> folderMap) {
         if (Boolean.TRUE.equals(workspace.getPublishAll())) {
-            return allPosts.stream()
-                    .filter(p -> !Boolean.TRUE.equals(p.getIsExcluded()))
-                    .toList();
+            return !Boolean.TRUE.equals(post.getIsExcluded());
         }
 
-        // 2. 개별 판단
-        List<Post> visiblePosts = new ArrayList<>();
-
-        Map<Long, Folder> folderMap = folderRepository
-                .findAllByWorkspaceWorkspaceId(workspace.getWorkspaceId())
-                .stream()
-                .collect(Collectors.toMap(Folder::getFolderId, f -> f));
-
-        for (Post post : allPosts) {
-            if (post.getFolder() == null) {
-                // 루트 게시글: is_public만 체크
-                if (Boolean.TRUE.equals(post.getIsPublic())) {
-                    visiblePosts.add(post);
-                }
-            } else {
-                // 폴더 소속 게시글
-                Folder folder = post.getFolder();
-
-                // 폴더 또는 상위 폴더 중 publishAll인 게 있는지 확인
-                if (isFolderPublishAll(folder, folderMap)) {
-                    if (!Boolean.TRUE.equals(post.getIsExcluded())) {
-                        visiblePosts.add(post);
-                    }
-                } else if (Boolean.TRUE.equals(post.getIsPublic())) {
-                    visiblePosts.add(post);
-                }
-            }
+        if (post.getFolder() == null) {
+            return Boolean.TRUE.equals(post.getIsPublic());
         }
 
-        return visiblePosts;
+        // post.getFolder()는 Lazy 프록시이므로 folderMap에서 꺼낸 객체로 교체
+        Folder folder = folderMap.get(post.getFolder().getFolderId());
+        if (isFolderPublishAll(folder, folderMap)) {
+            return !Boolean.TRUE.equals(post.getIsExcluded());
+        }
+
+        return Boolean.TRUE.equals(post.getIsPublic());
     }
 
     /**
@@ -135,104 +153,5 @@ public class PublicViewService {
                     : null;
         }
         return false;
-    }
-
-    /**
-     * 특정 게시글이 공개 상태인지 단건 확인
-     */
-    private boolean isPostVisible(Post post, Workspace workspace, Map<Long, Folder> folderMap) {
-        if (Boolean.TRUE.equals(workspace.getPublishAll())) {
-            return !Boolean.TRUE.equals(post.getIsExcluded());
-        }
-
-        if (post.getFolder() == null) {
-            return Boolean.TRUE.equals(post.getIsPublic());
-        }
-
-        if (isFolderPublishAll(post.getFolder(), folderMap)) {
-            return !Boolean.TRUE.equals(post.getIsExcluded());
-        }
-
-        return Boolean.TRUE.equals(post.getIsPublic());
-    }
-
-    /**
-     * 공개 응답 구성 (폴더 트리 + 게시글)
-     */
-    private PublicWorkspaceResponse buildPublicResponse(Workspace workspace,
-                                                         List<Post> visiblePosts) {
-        // 루트 게시글
-        List<PublicWorkspaceResponse.PublicPostItem> rootPosts = visiblePosts.stream()
-                .filter(p -> p.getFolder() == null)
-                .map(this::toPostItem)
-                .toList();
-
-        // 폴더별 게시글 그룹핑
-        Map<Long, List<Post>> postsByFolder = visiblePosts.stream()
-                .filter(p -> p.getFolder() != null)
-                .collect(Collectors.groupingBy(p -> p.getFolder().getFolderId()));
-
-        // 공개 게시글이 있는 폴더만 트리로 구성
-        List<Folder> allFolders = folderRepository
-                .findAllByWorkspaceWorkspaceId(workspace.getWorkspaceId());
-
-        List<PublicWorkspaceResponse.PublicFolderItem> folderTree =
-                buildPublicFolderTree(null, allFolders, postsByFolder);
-
-        return PublicWorkspaceResponse.builder()
-                .workspaceName(workspace.getName())
-                .description(workspace.getDescription())
-                .folders(folderTree)
-                .rootPosts(rootPosts)
-                .build();
-    }
-
-    /**
-     * 공개 게시글이 있는 폴더만 포함하는 트리
-     */
-    private List<PublicWorkspaceResponse.PublicFolderItem> buildPublicFolderTree(
-            Long parentId, List<Folder> allFolders, Map<Long, List<Post>> postsByFolder) {
-
-        List<PublicWorkspaceResponse.PublicFolderItem> result = new ArrayList<>();
-
-        List<Folder> children = allFolders.stream()
-                .filter(f -> {
-                    if (parentId == null) return f.getParent() == null;
-                    return f.getParent() != null
-                            && f.getParent().getFolderId().equals(parentId);
-                })
-                .toList();
-
-        for (Folder folder : children) {
-            List<PublicWorkspaceResponse.PublicPostItem> posts =
-                    postsByFolder.getOrDefault(folder.getFolderId(), List.of())
-                            .stream()
-                            .map(this::toPostItem)
-                            .toList();
-
-            List<PublicWorkspaceResponse.PublicFolderItem> subFolders =
-                    buildPublicFolderTree(folder.getFolderId(), allFolders, postsByFolder);
-
-            // 이 폴더나 하위에 공개 게시글이 있을 때만 포함
-            if (!posts.isEmpty() || !subFolders.isEmpty()) {
-                result.add(PublicWorkspaceResponse.PublicFolderItem.builder()
-                        .folderId(folder.getFolderId())
-                        .name(folder.getName())
-                        .posts(posts)
-                        .children(subFolders)
-                        .build());
-            }
-        }
-
-        return result;
-    }
-
-    private PublicWorkspaceResponse.PublicPostItem toPostItem(Post post) {
-        return PublicWorkspaceResponse.PublicPostItem.builder()
-                .postId(post.getPostId())
-                .title(post.getTitle())
-                .authorNickname(post.getAuthor().getNickname())
-                .createdAt(post.getCreatedAt())
-                .build();
     }
 }

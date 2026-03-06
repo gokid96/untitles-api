@@ -14,8 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/workspaces/{workspaceId}/folders")
@@ -30,12 +28,7 @@ public class FolderController {
     public ResponseEntity<WorkspaceTreeResponseDTO> getRootFolders(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long workspaceId) {
-        List<FolderResponseDTO> folders = folderService.getRootFolders(
-                userDetails.getUserId(), workspaceId);
-        return ResponseEntity.ok(WorkspaceTreeResponseDTO.builder()
-                .folders(folders)
-                .rootPosts(List.of())
-                .build());
+        return ResponseEntity.ok(folderService.getRootFolders(userDetails.getUserId(), workspaceId));
     }
 
     /**

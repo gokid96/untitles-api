@@ -1,6 +1,5 @@
 package com.untitles.domain.folder.dto.response;
 
-
 import com.untitles.domain.post.dto.response.PostSimpleDTO;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,5 +10,14 @@ import java.util.List;
 @Builder
 public class WorkspaceTreeResponseDTO {
     private List<FolderResponseDTO> folders;
-    private List<PostSimpleDTO> rootPosts;//폴더없는 게시글
+    private List<PostSimpleDTO> rootPosts;
+
+    public static WorkspaceTreeResponseDTO of(
+            List<FolderResponseDTO> folders,
+            List<PostSimpleDTO> rootPosts) {
+        return WorkspaceTreeResponseDTO.builder()
+                .folders(folders)
+                .rootPosts(rootPosts)
+                .build();
+    }
 }
