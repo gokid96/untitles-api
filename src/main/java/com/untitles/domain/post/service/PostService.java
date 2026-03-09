@@ -92,14 +92,12 @@ public class PostService {
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
 
-
         if (request.getTitle() != null) post.updateTitle(request.getTitle());
         if (request.getContent() != null) {
             // XSS 방지를 위한 HTML Sanitize
             String sanitizedContent = htmlSanitizer.sanitize(request.getContent());
             post.updateContent(sanitizedContent);
         }
-
         return PostResponseDTO.from(postRepository.saveAndFlush(post));
     }
 

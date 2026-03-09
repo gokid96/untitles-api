@@ -23,8 +23,8 @@ public class Post {
     @Column(name = "post_id")
     private Long postId;
 
-//    @Version
-//    private Long version;
+    @Version
+    private Long version;
 
     @Column(nullable = false, length = 200)
     private String title;

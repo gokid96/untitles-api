@@ -15,5 +15,5 @@ public class PostUpdateRequestDTO {
     private String title;
     @Size(max = 50000)
     private String content;
-//    private Long version;
+    private Long version;
 }
