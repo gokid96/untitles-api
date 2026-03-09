@@ -17,7 +17,7 @@ public class PostResponseDTO {
     private Long postId;
     private String title;
     private String content;
-    private Long version;
+//    private Long version;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Long folderId;
@@ -33,7 +33,7 @@ public class PostResponseDTO {
                 .postId(post.getPostId())
                 .title(post.getTitle())
                 .content(post.getContent())
-                .version(post.getVersion())
+//                .version(post.getVersion())
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .authorId(post.getAuthor().getUserId())

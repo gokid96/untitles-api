@@ -170,13 +170,13 @@ public class FolderService {
         List<FolderResponseDTO> folders = folderRepository
                 .findByWorkspaceWorkspaceIdAndParentIsNull(workspaceId)
                 .stream()
-                .map(FolderResponseDTO::from)
+                .map(FolderResponseDTO::from) // ← 여기서 @BatchSize 쿼리 발생
                 .toList();
 
         List<PostSimpleDTO> rootPosts = postRepository
                 .findByWorkspaceWorkspaceIdAndFolderIsNull(workspaceId)
                 .stream()
-                .map(PostSimpleDTO::from)
+                .map(PostSimpleDTO::from) // ← 여기서 @BatchSize 쿼리 발생
                 .toList();
 
         return WorkspaceTreeResponseDTO.builder()

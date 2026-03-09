@@ -33,9 +33,9 @@ public class FolderResponseDTO {
                 .parentId(folder.getParent() != null ? folder.getParent().getFolderId() : null)
                 .createdAt(folder.getCreatedAt())
                 .updatedAt(folder.getUpdatedAt())
-                .children(folder.getChildren().stream()
-                        .map(FolderResponseDTO::from)
-                        .collect(Collectors.toList()))
+                .children(folder.getChildren().stream() // Lazy 컬렉션 접근 → @BatchSize IN 쿼리 발생
+                        .map(FolderResponseDTO::from)   // 자식 폴더도 from() 재귀 호출
+                        .collect(Collectors.toList()))  // 자식이 없으면 빈 리스트 반환 → 재귀 종료
                 .posts(folder.getPosts() != null
                         ? folder.getPosts().stream()
                         .map(PostSimpleDTO::from)
