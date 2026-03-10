@@ -1,5 +1,7 @@
 package com.untitles.domain.workspace.service;
 
+import com.untitles.domain.folder.repository.FolderRepository;
+import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.user.repository.UserRepository;
 import com.untitles.domain.workspace.dto.request.MemberInviteRequest;
@@ -30,6 +32,8 @@ public class WorkspaceService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final UserRepository userRepository;
+    private final PostRepository postRepository;
+    private final FolderRepository folderRepository;
 
     // 워크스페이스 생성
     @Transactional
@@ -107,7 +111,9 @@ public class WorkspaceService {
             throw new BusinessException(ErrorCode.CANNOT_DELETE_PERSONAL_WORKSPACE);
         }
 
-
+        postRepository.deleteByWorkspaceWorkspaceId(workspaceId);
+        folderRepository.deleteAllByWorkspaceId(workspaceId);
+        workspaceMemberRepository.deleteAllByWorkspaceId(workspaceId);
         workspaceRepository.delete(member.getWorkspace());
     }
 
