@@ -23,6 +23,11 @@ public interface FolderRepository extends JpaRepository<Folder, Long> {
     )
     List<Folder> findAllByWorkspaceIdWithPosts(@Param("workspaceId") Long workspaceId);
 
+
+    @Modifying
+    @Query("UPDATE Folder f SET f.parent = null WHERE f.workspace.workspaceId = :workspaceId")
+    void clearParentByWorkspaceId(@Param("workspaceId") Long workspaceId);
+
     @Modifying
     @Query("DELETE FROM Folder f WHERE f.workspace.workspaceId = :workspaceId")
             void deleteAllByWorkspaceId(@Param("workspaceId") Long workspaceId);

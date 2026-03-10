@@ -112,7 +112,8 @@ public class WorkspaceService {
         }
 
         postRepository.deleteByWorkspaceWorkspaceId(workspaceId);
-        folderRepository.deleteAllByWorkspaceId(workspaceId);
+        folderRepository.clearParentByWorkspaceId(workspaceId);// 1. 부모폴더 null 업데이트(FK 제약 해제)
+        folderRepository.deleteAllByWorkspaceId(workspaceId);  // 2. 그다음 삭제
         workspaceMemberRepository.deleteAllByWorkspaceId(workspaceId);
         workspaceRepository.delete(member.getWorkspace());
     }
