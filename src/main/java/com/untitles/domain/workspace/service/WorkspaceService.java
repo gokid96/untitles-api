@@ -110,12 +110,15 @@ public class WorkspaceService {
         if (workspace.getType() == WorkspaceType.PERSONAL) {
             throw new BusinessException(ErrorCode.CANNOT_DELETE_PERSONAL_WORKSPACE);
         }
-
-        postRepository.deleteByWorkspaceWorkspaceId(workspaceId);
-        folderRepository.clearParentByWorkspaceId(workspaceId);// 1. 부모폴더 null 업데이트(FK 제약 해제)
-        folderRepository.deleteAllByWorkspaceId(workspaceId);  // 2. 그다음 삭제
-        workspaceMemberRepository.deleteAllByWorkspaceId(workspaceId);
-        workspaceRepository.delete(member.getWorkspace());
+        /**
+         * 삭제 순서 중요! FK 제약 조건 때문에 순서 바꾸면 에러남
+         * post → folder(parent null) → folder → member → workspace
+         */
+        postRepository.deleteByWorkspaceWorkspaceId(workspaceId);      //1. 게시글 삭제
+        folderRepository.clearParentByWorkspaceId(workspaceId);        //2. 부모폴더 null 업데이트(FK 제약 해제)
+        folderRepository.deleteAllByWorkspaceId(workspaceId);          //3. 그다음 삭제
+        workspaceMemberRepository.deleteAllByWorkspaceId(workspaceId); //4. 멤버삭제
+        workspaceRepository.delete(member.getWorkspace());             //5. 워크스페이스 삭제
     }
 
     // 멤버 초대 (OWNER, ADMIN만)

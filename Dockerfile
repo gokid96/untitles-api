@@ -13,4 +13,4 @@ COPY --from=build /app/build/libs/*.jar app.jar
 
 EXPOSE 8070
 
-ENTRYPOINT ["java", "-jar", "-Dspring.profiles.active=prod", "app.jar"]
+ENTRYPOINT ["java", "-jar", "-Dspring.profiles.active=test", "app.jar"]
