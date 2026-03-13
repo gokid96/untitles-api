@@ -18,15 +18,18 @@ public class MockSesConfig {
         return new SesV2Client() {
             @Override
             public SendEmailResponse sendEmail(SendEmailRequest request) {
+                try {
+                    Thread.sleep(200); //ses 응답시간
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
                 return SendEmailResponse.builder()
                         .messageId("mock-message-id")
                         .build();
             }
 
             @Override
-            public String serviceName() {
-                return "mock-ses";
-            }
+            public String serviceName() { return "mock-ses"; }
 
             @Override
             public void close() {}
