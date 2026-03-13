@@ -7,10 +7,8 @@ import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import software.amazon.awssdk.services.sesv2.SesV2Client;
 import software.amazon.awssdk.services.sesv2.model.*;
 
 import java.util.Random;
@@ -22,12 +20,9 @@ import java.util.Random;
 @Transactional(readOnly = true)
 public class EmailService {
 
-    private final SesV2Client sesV2Client;
     private final EmailVerificationRepository verificationRepository;
     private final UserRepository userRepository;
-
-    @Value("${aws.ses.from-email}")
-    private String fromEmail;
+    private final EmailSender emailSender;
 
     private static final int EXPIRATION_MINUTES = 10;
 
@@ -52,14 +47,14 @@ public class EmailService {
 //        verificationRepository.deleteByEmail(email);
 
         // 6자리 인증번호 생성
-        String code = String.format("%06d", new Random().nextInt(1000000));
+        String verificationCode = String.format("%06d", new Random().nextInt(1000000));
 
         // DB 저장
-        EmailVerification verification = EmailVerification.create(email, code, EXPIRATION_MINUTES);
+        EmailVerification verification = EmailVerification.create(email, verificationCode, EXPIRATION_MINUTES);
         verificationRepository.save(verification);
 
         // 이메일 발송
-        sendEmail(email, code);
+        emailSender.sendAsync(email, verificationCode);
 
         log.info("인증번호 발송 완료: {}", email);
     }
@@ -109,43 +104,5 @@ public class EmailService {
         verificationRepository.deleteByEmail(email);
     }
 
-    /**
-     * 이메일 발송 (SES)
-     */
-    private void sendEmail(String toEmail, String verificationCode) {
-        String subject = "[untitles] 회원가입 인증 코드";
-        String htmlBody = String.format("""
-            <html>
-            <body>
-                <h2>이메일 인증</h2>
-                <p>아래 인증 코드를 입력해주세요:</p>
-                <h1 style="color: #4A90D9;">%s</h1>
-                <p>이 코드는 %d분간 유효합니다.</p>
-            </body>
-            </html>
-            """, verificationCode, EXPIRATION_MINUTES);
 
-        SendEmailRequest request = SendEmailRequest.builder()
-                .fromEmailAddress(fromEmail)
-                .destination(Destination.builder()
-                        .toAddresses(toEmail)
-                        .build())
-                .content(EmailContent.builder()
-                        .simple(Message.builder()
-                                .subject(Content.builder()
-                                        .data(subject)
-                                        .charset("UTF-8")
-                                        .build())
-                                .body(Body.builder()
-                                        .html(Content.builder()
-                                                .data(htmlBody)
-                                                .charset("UTF-8")
-                                                .build())
-                                        .build())
-                                .build())
-                        .build())
-                .build();
-
-        sesV2Client.sendEmail(request);
-    }
 }
