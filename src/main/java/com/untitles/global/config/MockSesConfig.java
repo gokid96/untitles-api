@@ -19,7 +19,7 @@ public class MockSesConfig {
             @Override
             public SendEmailResponse sendEmail(SendEmailRequest request) {
                 try {
-                    Thread.sleep(200); //ses 응답시간
+                    Thread.sleep(200);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
