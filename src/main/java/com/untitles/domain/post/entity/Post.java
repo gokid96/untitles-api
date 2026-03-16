@@ -43,7 +43,6 @@ public class Post {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private Users author;
-    
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "folder_id")
@@ -52,7 +51,6 @@ public class Post {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "workspace_id", nullable = false)
     private Workspace workspace;
-
 
     public void updateTitle(String Title) {
         this.title = Title;

@@ -68,6 +68,9 @@ spring:
 server:
   port: 8070
   forward-headers-strategy: native
+  tomcat:
+    mbeanregistry:
+      enabled: true
   servlet:
     session:
       cookie:
@@ -85,6 +88,8 @@ management:
     health:
       show-details: always
   metrics:
+    enable:
+      tomcat: true
     distribution:
       percentiles-histogram:
         http.server.requests: true

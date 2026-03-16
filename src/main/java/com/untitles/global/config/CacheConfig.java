@@ -18,7 +18,7 @@ public class CacheConfig {
         CaffeineCacheManager manager = new CaffeineCacheManager();
         manager.setCaffeine(
                 Caffeine.newBuilder()
-                        .expireAfterWrite(5, TimeUnit.MINUTES) // 5분 후 만료
+                        .expireAfterWrite(10, TimeUnit.MINUTES) //10분 후 만료
                         .maximumSize(500)//최대 500개 항목
         );
         return manager;
