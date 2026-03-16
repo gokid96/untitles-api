@@ -18,12 +18,12 @@ import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,7 +33,7 @@ public class FolderService {
     private final FolderRepository folderRepository;
     private final PostRepository postRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
-    private final UserRepository  userRepository;
+    private final UserRepository userRepository;
     private final WorkspaceRepository workspaceRepository;
 
     /**
@@ -47,8 +47,8 @@ public class FolderService {
 //
 //        return workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
 //                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
-       return workspaceMemberRepository.findByWorkspaceWorkspaceIdAndUserUserId(workspaceId, userId)
-               .orElseThrow(() -> new BusinessException(ErrorCode.ACCESS_DENIED));
+        return workspaceMemberRepository.findByWorkspaceWorkspaceIdAndUserUserId(workspaceId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCESS_DENIED));
     }
 
     /**
@@ -64,6 +64,7 @@ public class FolderService {
      * 폴더 생성
      */
     @Transactional
+    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
     public FolderResponseDTO createFolder(Long userId, Long workspaceId, FolderCreateRequestDTO request) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -99,6 +100,7 @@ public class FolderService {
      * 폴더 수정
      */
     @Transactional
+    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
     public FolderResponseDTO updateFolder(Long userId, Long workspaceId, Long folderId, FolderUpdateRequestDTO request) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -115,6 +117,7 @@ public class FolderService {
      * 폴더 삭제
      */
     @Transactional
+    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
     public void deleteFolder(Long userId, Long workspaceId, Long folderId) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -129,6 +132,7 @@ public class FolderService {
      * 폴더 이동
      */
     @Transactional
+    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
     public FolderResponseDTO moveFolder(Long userId, Long workspaceId, Long folderId, Long newParentId) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -164,6 +168,9 @@ public class FolderService {
     /**
      * 워크스페이스 트리 조회 (루트 폴더 + 루트 게시글)
      */
+    // 캐시 키 : workspaceId
+    // 같은 workspaceId면 DB 안타면 캐시에서 바로 반환
+    @Cacheable(value = "workspaceTree", key = "#workspaceId")
     public WorkspaceTreeResponseDTO getRootFolders(Long userId, Long workspaceId) {
         getMemberOrThrow(userId, workspaceId);
 
@@ -233,7 +240,6 @@ public class FolderService {
 //                .rootPosts(rootPostDTOs)
 //                .build();
 //    }
-
 
 
 }

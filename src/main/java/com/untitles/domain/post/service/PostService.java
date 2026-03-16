@@ -18,6 +18,7 @@ import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.util.HtmlSanitizer;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +48,7 @@ public class PostService {
      * 게시글 생성
      */
     @Transactional
+    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
     public PostResponseDTO createPost(Long userId, Long workspaceId, PostCreateRequestDTO request) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -85,6 +87,7 @@ public class PostService {
      * 게시글 수정
      */
     @Transactional
+    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
     public PostResponseDTO updatePost(Long userId, Long workspaceId, Long postId, PostUpdateRequestDTO request) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -106,6 +109,7 @@ public class PostService {
      * 게시글 삭제
      */
     @Transactional
+    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
     public void deletePost(Long userId, Long workspaceId, Long postId) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);
@@ -120,6 +124,7 @@ public class PostService {
      * 게시글 이동 (폴더 변경)
      */
     @Transactional
+    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
     public PostResponseDTO movePost(Long userId, Long workspaceId, Long postId, Long newFolderId) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
         checkWritePermission(member);

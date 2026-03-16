@@ -16,6 +16,8 @@ import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,6 +78,10 @@ public class PublishService {
      * 공개 설정 저장
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "publicWorkspace",key="#result.pulicSlug"),
+            @CacheEvict(value = "publicPost",allEntries = true)// 개별 게시글도 전체삭제
+    })
     public PublishSettingResponse updatePublishSettings(Long userId, Long workspaceId,
                                                         WorkspacePublishRequest request) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);

@@ -12,6 +12,7 @@ import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,7 +37,9 @@ public class PublicViewService {
      *   ② 루트 게시글 조회 (폴더 없는 공개 게시글)
      * - 공개 설정 판단은 폴더/게시글의 publishAll, isPublic, isExcluded 필드로 처리
      */
+    //캐시 키:slug
     @Transactional(readOnly = true)
+    @Cacheable(value = "publicWorkspace", key="#slug")
     public PublicWorkspaceResponse getPublicWorkspace(String slug) {
         Workspace workspace = workspaceRepository.findByPublicSlug(slug)
                 .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
@@ -86,7 +89,9 @@ public class PublicViewService {
     /**
      * 공개 게시글 상세 조회 (비로그인)
      */
+    //캐시 키: slug + postId 조합
     @Transactional(readOnly = true)
+    @Cacheable (value = "publicPost", key = "#slug + ':'+ #postId")
     public PublicWorkspaceResponse.PublicPostDetail getPublicPost(String slug, Long postId) {
         Workspace workspace = workspaceRepository.findByPublicSlug(slug)
                 .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
