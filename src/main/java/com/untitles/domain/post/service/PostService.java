@@ -137,7 +137,7 @@ public class PostService {
             newFolder = folderRepository.findByFolderIdAndWorkspaceWorkspaceId(newFolderId, workspaceId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.FOLDER_NOT_FOUND));
         }
- 
+
         post.updateFolder(newFolder);
         postRepository.save(post);
         return PostResponseDTO.from(post);
