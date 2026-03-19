@@ -48,28 +48,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to EC2
+      - name: Deploy to EC2-1
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host: ${{ secrets.EC2_HOST_1 }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: GHCR_TOKEN,GITHUB_REPOSITORY
           script: |
-            # GitHub Container Registry 로그인
-            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            # 기존 컨테이너 중지 및 삭제
+            echo $GHCR_TOKEN | docker login ghcr.io -u gokid96 --password-stdin
             docker stop untitles-api || true
             docker rm untitles-api || true
-            
-            # 최신 이미지 pull
-            docker pull ghcr.io/${{ github.repository }}:latest
-            
-            # 새 컨테이너 실행
+            docker pull ghcr.io/$GITHUB_REPOSITORY:latest
             docker run -d \
               --name untitles-api \
               --restart unless-stopped \
               -p 8070:8070 \
+              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
               -e DB_HOST=${{ secrets.DB_HOST }} \
               -e DB_USERNAME=${{ secrets.DB_USERNAME }} \
               -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
@@ -86,7 +81,41 @@ jobs:
               -e KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }} \
               -e NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }} \
               -e NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }} \
-              ghcr.io/${{ github.repository }}:latest
-            
-            # 오래된 이미지 정리
+              ghcr.io/$GITHUB_REPOSITORY:latest
+            docker image prune -f
+
+      - name: Deploy to EC2-2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST_2 }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: GHCR_TOKEN,GITHUB_REPOSITORY
+          script: |
+            echo $GHCR_TOKEN | docker login ghcr.io -u gokid96 --password-stdin
+            docker stop untitles-api || true
+            docker rm untitles-api || true
+            docker pull ghcr.io/$GITHUB_REPOSITORY:latest
+            docker run -d \
+              --name untitles-api \
+              --restart unless-stopped \
+              -p 8070:8070 \
+              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              -e DB_HOST=${{ secrets.DB_HOST }} \
+              -e DB_USERNAME=${{ secrets.DB_USERNAME }} \
+              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+              -e AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }} \
+              -e AWS_SECRET_KEY=${{ secrets.AWS_SECRET_KEY }} \
+              -e R2_ACCESS_KEY_ID=${{ secrets.R2_ACCESS_KEY_ID }} \
+              -e R2_SECRET_ACCESS_KEY=${{ secrets.R2_SECRET_ACCESS_KEY }} \
+              -e R2_ENDPOINT=${{ secrets.R2_ENDPOINT }} \
+              -e R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }} \
+              -e R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }} \
+              -e GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
+              -e GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+              -e KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }} \
+              -e KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }} \
+              -e NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }} \
+              -e NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }} \
+              ghcr.io/$GITHUB_REPOSITORY:latest
             docker image prune -f

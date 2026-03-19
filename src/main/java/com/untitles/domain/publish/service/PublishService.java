@@ -79,8 +79,8 @@ public class PublishService {
      */
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "publicWorkspace",key="#result.pulicSlug"),
-            @CacheEvict(value = "publicPost",allEntries = true)// 개별 게시글도 전체삭제
+            @CacheEvict(value = "publicWorkspace", key = "#result.publicSlug"),
+            @CacheEvict(value = "publicPost", allEntries = true)
     })
     public PublishSettingResponse updatePublishSettings(Long userId, Long workspaceId,
                                                         WorkspacePublishRequest request) {
@@ -265,7 +265,6 @@ public class PublishService {
             attempt++;
             slug = base + "-" + UUID.randomUUID().toString().substring(0, 4);
             if (attempt > 10) {
-                // 극히 드문 경우 - 전체 UUID 사용
                 slug = UUID.randomUUID().toString();
                 break;
             }
@@ -275,13 +274,6 @@ public class PublishService {
     }
 
     private WorkspaceMember getMemberOrThrow(Long userId, Long workspaceId) {
-//        Workspace workspace = workspaceRepository.findById(workspaceId)
-//                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
-//        Users user = userRepository.findById(userId)
-//                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-//
-//        return workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-//                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
         return workspaceMemberRepository.findWithWorkspaceByWorkspaceIdAndUserId(workspaceId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCESS_DENIED));
     }

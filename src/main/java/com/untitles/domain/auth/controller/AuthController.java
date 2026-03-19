@@ -4,8 +4,6 @@ import com.untitles.domain.auth.dto.response.LoginResponse;
 import com.untitles.domain.auth.service.AuthService;
 import com.untitles.domain.user.dto.request.UserCreateRequestDTO;
 import com.untitles.domain.user.dto.request.UserLoginRequestDTO;
-import com.untitles.domain.user.service.UserService;
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,65 +17,29 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
-    private final UserService userService;
 
     /**
      * 로그인
      */
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(
-            @RequestBody UserLoginRequestDTO request,
-            HttpSession session) {
-        LoginResponse response = authService.login(request, session);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<LoginResponse> login(@RequestBody UserLoginRequestDTO request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 
     /**
      * 회원가입
      */
     @PostMapping("/signup")
-    public ResponseEntity<LoginResponse> signup(
-            @RequestBody UserCreateRequestDTO request,
-            HttpSession session) {
-        LoginResponse response = authService.signup(request, session);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<LoginResponse> signup(@RequestBody UserCreateRequestDTO request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.signup(request));
     }
 
     /**
-     * 로그아웃
+     * 로그아웃 - 클라이언트에서 토큰 삭제
      */
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout(HttpSession session) {
-        authService.logout(session);
+    public ResponseEntity<Map<String, String>> logout() {
+        authService.logout();
         return ResponseEntity.ok(Map.of("message", "로그아웃 되었습니다."));
-    }
-
-    /**
-     * 현재 로그인 상태 확인
-     */
-    @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> getCurrentUser(HttpSession session) {
-        var context = org.springframework.security.core.context.SecurityContextHolder.getContext();
-        var authentication = context.getAuthentication();
-
-        if (authentication == null || !authentication.isAuthenticated()
-                || authentication.getPrincipal().equals("anonymousUser")) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("authenticated", false));
-        }
-
-        var userDetails = (com.untitles.global.security.CustomUserDetails) authentication.getPrincipal();
-
-        var userInfo = userService.getUserInfo(userDetails.getUserId());
-
-        Map<String, Object> response = new java.util.HashMap<>();
-        response.put("authenticated", true);
-        response.put("userId", userInfo.getUserId());
-        response.put("email", userInfo.getEmail());
-        response.put("loginId", userInfo.getLoginId());
-        response.put("nickname", userInfo.getNickname());
-        response.put("profileImage", userInfo.getProfileImage());
-
-        return ResponseEntity.ok(response);
     }
 }

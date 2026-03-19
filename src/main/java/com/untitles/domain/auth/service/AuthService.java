@@ -14,16 +14,12 @@ import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
-import com.untitles.global.security.CustomUserDetails;
-import jakarta.servlet.http.HttpSession;
+import com.untitles.global.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,52 +31,38 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    private final WorkspaceRepository  workspaceRepository;
-    private final WorkspaceMemberRepository  workspaceMemberRepository;
+    private final WorkspaceRepository workspaceRepository;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final JwtProvider jwtProvider;
+
     /**
-     * 로그인 - 세션 기반
+     * 로그인 - JWT 발급
      */
-    public LoginResponse login(UserLoginRequestDTO request, HttpSession session) {
-        // 사용자 조회
+    public LoginResponse login(UserLoginRequestDTO request) {
         Users user = userRepository.findByLoginId(request.getLoginId())
                 .orElseThrow(() -> new UsernameNotFoundException("아이디가 존재하지 않습니다."));
 
-        // 비밀번호 검증
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BadCredentialsException("비밀번호가 일치하지 않습니다.");
         }
 
-        // SecurityContext에 인증 정보 저장
-        CustomUserDetails userDetails = new CustomUserDetails(user);
-        UsernamePasswordAuthenticationToken authentication = 
-                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-        
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        
-        // 세션에 SecurityContext 저장 (Spring Security가 자동으로 처리하지만 명시적으로)
-        session.setAttribute(
-                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
-                SecurityContextHolder.getContext()
-        );
+        String accessToken = jwtProvider.createAccessToken(user.getUserId(), user.getLoginId());
+        String refreshToken = jwtProvider.createRefreshToken(user.getUserId(), user.getLoginId());
 
         log.info("로그인 성공: {}", user.getLoginId());
 
-        return LoginResponse.of(
-                user.getUserId(),
-                user.getLoginId(),
-                user.getNickname()
-        );
+        return LoginResponse.of(user.getUserId(), user.getLoginId(), user.getNickname(),
+                accessToken, refreshToken);
     }
 
     /**
-     * 회원가입
+     * 회원가입 후 자동 로그인 - JWT 발급
      */
     @Transactional
-    public LoginResponse signup(UserCreateRequestDTO request, HttpSession session) {
+    public LoginResponse signup(UserCreateRequestDTO request) {
         if (!emailService.isVerified(request.getEmail())) {
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
-        // 중복 검사
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
@@ -91,7 +73,6 @@ public class AuthService {
             throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
-        // 사용자 생성
         Users user = Users.builder()
                 .email(request.getEmail())
                 .loginId(request.getLoginId())
@@ -101,7 +82,6 @@ public class AuthService {
 
         Users savedUser = userRepository.save(user);
 
-        // 회원가입 후 개인 워크스페이스 자동 생성
         Workspace personalWorkspace = Workspace.builder()
                 .name("개인 워크스페이스")
                 .type(WorkspaceType.PERSONAL)
@@ -117,32 +97,20 @@ public class AuthService {
 
         emailService.deleteVerification(request.getEmail());
 
-        // 회원가입 후 자동 로그인 (세션 생성)
-        CustomUserDetails userDetails = new CustomUserDetails(savedUser);
-        UsernamePasswordAuthenticationToken authentication = 
-                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-        
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        session.setAttribute(
-                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
-                SecurityContextHolder.getContext()
-        );
+        String accessToken = jwtProvider.createAccessToken(savedUser.getUserId(), savedUser.getLoginId());
+        String refreshToken = jwtProvider.createRefreshToken(savedUser.getUserId(), savedUser.getLoginId());
 
         log.info("회원가입 성공: {}", savedUser.getLoginId());
 
-        return LoginResponse.of(
-                savedUser.getUserId(),
-                savedUser.getLoginId(),
-                savedUser.getNickname()
-        );
+        return LoginResponse.of(savedUser.getUserId(), savedUser.getLoginId(), savedUser.getNickname(),
+                accessToken, refreshToken);
     }
 
     /**
-     * 로그아웃
+     * 로그아웃 - JWT는 클라이언트에서 토큰 삭제로 처리
+     * 서버에서는 별도 처리 없음
      */
-    public void logout(HttpSession session) {
-        SecurityContextHolder.clearContext();
-        session.invalidate();
-        log.info("로그아웃 성공");
+    public void logout() {
+        log.info("로그아웃");
     }
 }

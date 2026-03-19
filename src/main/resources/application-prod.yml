@@ -8,14 +8,6 @@ spring:
     hibernate:
       ddl-auto: validate
 
-server:
-  servlet:
-    session:
-      cookie:
-        secure: true
-        same-site: none
-        domain: untitles.net
-
 logging:
   level:
     org.hibernate.SQL: DEBUG
