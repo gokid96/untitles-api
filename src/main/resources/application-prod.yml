@@ -3,6 +3,11 @@ spring:
     url: jdbc:mysql://${DB_HOST}:3306/untitles?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: 6379
+      password: ${REDIS_PASSWORD}
 
   jpa:
     hibernate:

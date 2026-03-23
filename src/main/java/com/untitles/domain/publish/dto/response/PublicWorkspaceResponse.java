@@ -2,8 +2,10 @@ package com.untitles.domain.publish.dto.response;
 
 import com.untitles.domain.folder.entity.Folder;
 import com.untitles.domain.post.dto.response.PostSimpleDTO;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,6 +14,8 @@ import java.util.stream.Collectors;
 
 @Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class PublicWorkspaceResponse {
     private String workspaceName;
     private String description;
@@ -38,6 +42,8 @@ public class PublicWorkspaceResponse {
      */
     @Getter
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class PublicFolderItem {
         private Long folderId;
         private String name;
@@ -77,6 +83,8 @@ public class PublicWorkspaceResponse {
      */
     @Getter
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class PublicPostDetail {
         private Long postId;
         private String title;

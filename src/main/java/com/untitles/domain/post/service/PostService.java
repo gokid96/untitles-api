@@ -31,8 +31,6 @@ public class PostService {
     private final FolderRepository folderRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final HtmlSanitizer htmlSanitizer;
-    private final UserRepository userRepository;
-    private final WorkspaceRepository workspaceRepository;
 
     /**
      * 게시글 상세 조회

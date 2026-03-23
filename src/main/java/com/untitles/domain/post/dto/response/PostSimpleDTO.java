@@ -1,8 +1,10 @@
 package com.untitles.domain.post.dto.response;
 
 import com.untitles.domain.post.entity.Post;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 /*
@@ -10,6 +12,8 @@ import java.time.LocalDateTime;
 * */
 @Builder
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class PostSimpleDTO {
     private Long postId;
     private String title;

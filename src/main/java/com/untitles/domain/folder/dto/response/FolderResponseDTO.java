@@ -2,9 +2,7 @@ package com.untitles.domain.folder.dto.response;
 
 import com.untitles.domain.folder.entity.Folder;
 import com.untitles.domain.post.dto.response.PostSimpleDTO;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -13,6 +11,8 @@ import java.util.stream.Collectors;
 
 @Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class FolderResponseDTO {
     private Long folderId;
     private String name;

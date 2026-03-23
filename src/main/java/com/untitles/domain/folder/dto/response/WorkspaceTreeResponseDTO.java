@@ -1,13 +1,17 @@
 package com.untitles.domain.folder.dto.response;
 
 import com.untitles.domain.post.dto.response.PostSimpleDTO;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
 @Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class WorkspaceTreeResponseDTO {
     private List<FolderResponseDTO> folders;
     private List<PostSimpleDTO> rootPosts;
