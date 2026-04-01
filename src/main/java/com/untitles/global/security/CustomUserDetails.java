@@ -2,7 +2,6 @@ package com.untitles.global.security;
 
 import com.untitles.domain.user.entity.Users;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,10 +10,27 @@ import java.util.Collection;
 import java.util.Collections;
 
 @Getter
-@RequiredArgsConstructor
 public class CustomUserDetails implements UserDetails {
 
     private final Users user;
+
+    // JWT 필터 전용 필드 (DB 조회 없이 생성할 때 사용)
+    private final Long userId;
+    private final String loginId;
+
+    // 기존 생성자 (로그인 시 사용)
+    public CustomUserDetails(Users user) {
+        this.user = user;
+        this.userId = null;
+        this.loginId = null;
+    }
+
+    // JWT 필터 전용 생성자 (DB 조회 없음)
+    public CustomUserDetails(Long userId, String loginId) {
+        this.user = null;
+        this.userId = userId;
+        this.loginId = loginId;
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -23,51 +39,32 @@ public class CustomUserDetails implements UserDetails {
     }
 
     @Override
-    public String getPassword() {
-        return user.getPassword();
-    }
-
-    @Override
     public String getUsername() {
-        return user.getUserId().toString();
+        return user != null ? user.getUserId().toString() : String.valueOf(userId);
     }
 
     @Override
-    public boolean isAccountNonExpired() {
-        return true;
+    public String getPassword() {
+        return user != null ? user.getPassword() : null;
     }
 
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
-    }
-
-    // 편의 메서드
     public Long getUserId() {
-        return user.getUserId();
+        return user != null ? user.getUserId() : userId;
     }
 
     public String getLoginId() {
-        return user.getLoginId();
+        return user != null ? user.getLoginId() : loginId;
     }
 
     public String getNickname() {
-        return user.getNickname();
+        return user != null ? user.getNickname() : null;
     }
 
     public String getEmail() {
-        return user.getEmail();
+        return user != null ? user.getEmail() : null;
     }
 
-    public String getProfileImage(){return user.getProfileImage();}
+    public String getProfileImage() {
+        return user != null ? user.getProfileImage() : null;
+    }
 }

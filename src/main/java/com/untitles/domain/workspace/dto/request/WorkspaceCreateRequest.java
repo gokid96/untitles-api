@@ -7,4 +7,5 @@ public record WorkspaceCreateRequest(
     @NotBlank @Size(max = 50)
     String name,
     @Size(max = 200) String description
+
 ){}

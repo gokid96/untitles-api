@@ -93,4 +93,13 @@ public class Folder {
         this.publishAll = publishAll;
     }
 
+    // 정적 팩토리 메서드
+    public static Folder create(Users user, Workspace workspace, Folder parent, String name) {
+        return Folder.builder()
+                .user(user)
+                .workspace(workspace)
+                .parent(parent)
+                .name(name)
+                .build();
+    }
 }

@@ -1,6 +1,6 @@
 package com.untitles.global.jwt;
 
-import com.untitles.global.security.CustomUserDetailsService;
+import com.untitles.global.security.CustomUserDetails;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,7 +23,6 @@ import java.io.IOException;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
-    private final CustomUserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -34,7 +33,10 @@ public class JwtFilter extends OncePerRequestFilter {
 
         if (StringUtils.hasText(token) && jwtProvider.validateToken(token)) {
             Long userId = jwtProvider.getUserId(token);
-            UserDetails userDetails = userDetailsService.loadUserByUsername(String.valueOf(userId));
+            String loginId = jwtProvider.getLoginId(token);
+
+            // DB 조회 제거 - JWT 클레임에서 바로 생성
+            UserDetails userDetails = new CustomUserDetails(userId, loginId);
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());

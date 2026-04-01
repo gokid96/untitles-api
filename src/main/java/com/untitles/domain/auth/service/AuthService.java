@@ -8,8 +8,6 @@ import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.user.repository.UserRepository;
 import com.untitles.domain.workspace.entity.Workspace;
 import com.untitles.domain.workspace.entity.WorkspaceMember;
-import com.untitles.domain.workspace.entity.WorkspaceRole;
-import com.untitles.domain.workspace.entity.WorkspaceType;
 import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
@@ -73,26 +71,19 @@ public class AuthService {
             throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
-        Users user = Users.builder()
-                .email(request.getEmail())
-                .loginId(request.getLoginId())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .nickname(request.getNickname())
-                .build();
+        Users user = Users.createLocal(
+                request.getEmail(),
+                request.getLoginId(),
+                passwordEncoder.encode(request.getPassword()),
+                request.getNickname()
+        );
 
         Users savedUser = userRepository.save(user);
 
-        Workspace personalWorkspace = Workspace.builder()
-                .name("개인 워크스페이스")
-                .type(WorkspaceType.PERSONAL)
-                .build();
+        Workspace personalWorkspace = Workspace.createPersonal();
         workspaceRepository.save(personalWorkspace);
 
-        WorkspaceMember owner = WorkspaceMember.builder()
-                .workspace(personalWorkspace)
-                .user(savedUser)
-                .role(WorkspaceRole.OWNER)
-                .build();
+        WorkspaceMember owner = WorkspaceMember.createOwner(personalWorkspace, savedUser);
         workspaceMemberRepository.save(owner);
 
         emailService.deleteVerification(request.getEmail());

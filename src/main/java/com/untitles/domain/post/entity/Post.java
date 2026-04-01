@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
 public class Post {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "post_id")
@@ -28,18 +28,18 @@ public class Post {
 
     @Column(nullable = false, length = 200)
     private String title;
-    
+
     @Column(nullable = false, columnDefinition = "MEDIUMTEXT")
     private String content;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
-    
+
     @Column(name = "updated_at", nullable = false)
     @UpdateTimestamp
     private LocalDateTime updatedAt;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private Users author;
@@ -76,5 +76,16 @@ public class Post {
 
     public void updateIsExcluded(Boolean isExcluded) {
         this.isExcluded = isExcluded;
+    }
+
+    // 정적 팩토리 메서드
+    public static Post create(String title, String sanitizedContent, Users author, Workspace workspace, Folder folder) {
+        return Post.builder()
+                .title(title)
+                .content(sanitizedContent)
+                .author(author)
+                .workspace(workspace)
+                .folder(folder)
+                .build();
     }
 }

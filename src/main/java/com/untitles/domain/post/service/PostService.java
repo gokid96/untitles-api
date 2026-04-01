@@ -8,15 +8,13 @@ import com.untitles.domain.post.dto.response.PostResponseDTO;
 import com.untitles.domain.post.entity.Post;
 import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.user.entity.Users;
-import com.untitles.domain.user.repository.UserRepository;
 import com.untitles.domain.workspace.entity.Workspace;
 import com.untitles.domain.workspace.entity.WorkspaceMember;
-import com.untitles.domain.workspace.entity.WorkspaceRole;
 import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
-import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.util.HtmlSanitizer;
+import com.untitles.global.util.WorkspaceMemberHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -31,12 +29,13 @@ public class PostService {
     private final FolderRepository folderRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final HtmlSanitizer htmlSanitizer;
+    private final WorkspaceMemberHelper workspaceMemberHelper;
 
     /**
      * 게시글 상세 조회
      */
     public PostResponseDTO getPost(Long userId, Long workspaceId, Long postId) {
-        getMemberOrThrow(userId, workspaceId);
+        workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
         return PostResponseDTO.from(post);
@@ -48,8 +47,8 @@ public class PostService {
     @Transactional
     @CacheEvict(value = "workspaceTree", key = "#workspaceId")
     public PostResponseDTO createPost(Long userId, Long workspaceId, PostCreateRequestDTO request) {
-        WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
-        checkWritePermission(member);
+        WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
+        workspaceMemberHelper.checkWritePermission(member);
 
         Users user = member.getUser();
         Workspace workspace = member.getWorkspace();
@@ -59,24 +58,14 @@ public class PostService {
             throw new BusinessException(ErrorCode.POST_LIMIT_EXCEEDED);
         }
 
-        // 폴더 조회 (있으면)
         Folder folder = null;
         if (request.getFolderId() != null) {
             folder = folderRepository.findByFolderIdAndWorkspaceWorkspaceId(request.getFolderId(), workspaceId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.FOLDER_NOT_FOUND));
         }
 
-        // XSS 방지를 위한 HTML Sanitize
         String sanitizedContent = htmlSanitizer.sanitize(request.getContent());
-
-        Post post = Post.builder()
-                .title(request.getTitle())
-                .content(sanitizedContent)
-                .author(user)
-                .workspace(workspace)
-                .folder(folder)
-                .build();
-
+        Post post = Post.create(request.getTitle(), sanitizedContent, user, workspace, folder);
         Post savedPost = postRepository.save(post);
         return PostResponseDTO.from(savedPost);
     }
@@ -87,21 +76,19 @@ public class PostService {
     @Transactional
     @CacheEvict(value = "workspaceTree", key = "#workspaceId")
     public PostResponseDTO updatePost(Long userId, Long workspaceId, Long postId, PostUpdateRequestDTO request) {
-        WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
-        checkWritePermission(member);
+        WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
+        workspaceMemberHelper.checkWritePermission(member);
 
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
 
         if (request.getTitle() != null) post.updateTitle(request.getTitle());
         if (request.getContent() != null) {
-            // XSS 방지를 위한 HTML Sanitize
             String sanitizedContent = htmlSanitizer.sanitize(request.getContent());
             post.updateContent(sanitizedContent);
         }
         return PostResponseDTO.from(postRepository.saveAndFlush(post));
     }
-
 
     /**
      * 게시글 삭제
@@ -109,8 +96,8 @@ public class PostService {
     @Transactional
     @CacheEvict(value = "workspaceTree", key = "#workspaceId")
     public void deletePost(Long userId, Long workspaceId, Long postId) {
-        WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
-        checkWritePermission(member);
+        WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
+        workspaceMemberHelper.checkWritePermission(member);
 
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
@@ -124,8 +111,8 @@ public class PostService {
     @Transactional
     @CacheEvict(value = "workspaceTree", key = "#workspaceId")
     public PostResponseDTO movePost(Long userId, Long workspaceId, Long postId, Long newFolderId) {
-        WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
-        checkWritePermission(member);
+        WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
+        workspaceMemberHelper.checkWritePermission(member);
 
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
@@ -139,23 +126,5 @@ public class PostService {
         post.updateFolder(newFolder);
         postRepository.save(post);
         return PostResponseDTO.from(post);
-    }
-
-    private WorkspaceMember getMemberOrThrow(Long userId, Long workspaceId) {
-//        Workspace workspace = workspaceRepository.findById(workspaceId)
-//                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
-//        Users user = userRepository.findById(userId)
-//                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-//
-//        return workspaceMemberRepository.findByWorkspaceAndUser(workspace, user)
-//                .orElseThrow(() -> new BusinessException(ErrorCode.WORKSPACE_NOT_FOUND));
-       return workspaceMemberRepository.findByWorkspaceWorkspaceIdAndUserUserId(workspaceId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ACCESS_DENIED));
-    }
-
-    private void checkWritePermission(WorkspaceMember member) {
-        if (member.getRole() == WorkspaceRole.VIEWER) {
-            throw new BusinessException(ErrorCode.WRITE_PERMISSION_DENIED);
-        }
     }
 }

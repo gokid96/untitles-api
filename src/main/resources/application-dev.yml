@@ -13,6 +13,10 @@ jwt:
   access-token-expiration: 1800000
   refresh-token-expiration: 604800000
 
+spring:
+  cache:
+    type: none  # 로컬에서는 캐시 비활성화 (Redis 없음)
+
 app:
   public-base-url: http://localhost:5173
 

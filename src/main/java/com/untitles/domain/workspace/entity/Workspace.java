@@ -19,6 +19,7 @@ import java.util.List;
 public class Workspace {
 
     @Enumerated(EnumType.STRING)
+
     @Column(nullable = false)
     private WorkspaceType type;
 
@@ -65,11 +66,26 @@ public class Workspace {
     @Column(unique = true, length = 100)
     private String publicSlug; //공개 URL 슬러그 (예: "my-workspace")
 
+    public static Workspace createTeam(String name, String description) {
+        return Workspace.builder()
+                .name(name)
+                .description(description)
+                .type(WorkspaceType.TEAM)
+                .build();
+    }
+
     public void updatePublishAll(Boolean publishAll) {
         this.publishAll = publishAll;
     }
 
     public void updatePublicSlug(String publicSlug) {
         this.publicSlug = publicSlug;
+    }
+
+    public static Workspace createPersonal() {
+        return Workspace.builder()
+                .name("개인 워크스페이스")
+                .type(WorkspaceType.PERSONAL)
+                .build();
     }
 }

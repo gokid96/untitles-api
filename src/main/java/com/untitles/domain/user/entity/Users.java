@@ -68,4 +68,23 @@ public class Users {
         this.provider = provider;
         this.providerId = providerId;
     }
+
+    // 정적 팩토리 메서드
+    public static Users createLocal(String email, String loginId, String encodedPassword, String nickname) {
+        return Users.builder()
+                .email(email)
+                .loginId(loginId)
+                .password(encodedPassword)
+                .nickname(nickname)
+                .build();
+    }
+
+    public static Users createOAuth(String email, String nickname, AuthProvider provider, String providerId) {
+        return Users.builder()
+                .email(email)
+                .nickname(nickname)
+                .provider(provider)
+                .providerId(providerId)
+                .build();
+    }
 }

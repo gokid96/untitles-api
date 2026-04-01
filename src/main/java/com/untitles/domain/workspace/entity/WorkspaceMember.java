@@ -8,8 +8,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "workspace_member", 
-       uniqueConstraints = @UniqueConstraint(columnNames = {"workspace_id", "user_id"}))
+@Table(name = "workspace_member",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"workspace_id", "user_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
@@ -35,7 +35,22 @@ public class WorkspaceMember {
     @CreationTimestamp
     private LocalDateTime joinedAt;
 
+    public static WorkspaceMember createOwner(Workspace workspace, Users user) {
+        return WorkspaceMember.builder()
+                .workspace(workspace)
+                .user(user)
+                .role(WorkspaceRole.OWNER)
+                .build();
+    }
     public void updateRole(WorkspaceRole role) {
         this.role = role;
+    }
+
+    public static WorkspaceMember createMember(Workspace workspace, Users user, WorkspaceRole role) {
+        return WorkspaceMember.builder()
+                .workspace(workspace)
+                .user(user)
+                .role(role)
+                .build();
     }
 }
