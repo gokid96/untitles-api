@@ -51,7 +51,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy to EC2-1 (API + Redis)
+      # ── EC2-1 (API + Redis) ──────────────────────────────────────
+      - name: Copy docker-compose.prod1.yml to EC2-1
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST_1 }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: docker-compose.prod1.yml
+          target: /home/ubuntu/
+
+      - name: Deploy to EC2-1
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST_1 }}
@@ -60,7 +70,6 @@ jobs:
           script: |
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u gokid96 --password-stdin
 
-            # 환경변수 파일 생성
             cat > /home/ubuntu/.env << 'EOF'
             GITHUB_REPOSITORY=${{ github.repository }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
@@ -85,23 +94,23 @@ jobs:
             NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}
             EOF
 
-            # docker-compose 파일 복사 및 배포
-            docker pull ghcr.io/${{ github.repository }}:latest
             cd /home/ubuntu
+            docker pull ghcr.io/${{ github.repository }}:latest
             docker compose -f docker-compose.prod1.yml --env-file .env down || true
             docker compose -f docker-compose.prod1.yml --env-file .env up -d
             docker image prune -f
 
-      - name: Copy docker-compose.prod1.yml to EC2-1
+      # ── EC2-2 (API + Kafka) ──────────────────────────────────────
+      - name: Copy docker-compose.prod2.yml to EC2-2
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.EC2_HOST_1 }}
+          host: ${{ secrets.EC2_HOST_2 }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: docker-compose.prod1.yml
+          source: docker-compose.prod2.yml
           target: /home/ubuntu/
 
-      - name: Deploy to EC2-2 (API + Kafka)
+      - name: Deploy to EC2-2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST_2 }}
@@ -110,7 +119,6 @@ jobs:
           script: |
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u gokid96 --password-stdin
 
-            # 환경변수 파일 생성
             cat > /home/ubuntu/.env << 'EOF'
             GITHUB_REPOSITORY=${{ github.repository }}
             EC2_HOST_2=${{ secrets.EC2_HOST_2 }}
@@ -136,18 +144,8 @@ jobs:
             NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}
             EOF
 
-            # docker-compose 파일 복사 및 배포
-            docker pull ghcr.io/${{ github.repository }}:latest
             cd /home/ubuntu
+            docker pull ghcr.io/${{ github.repository }}:latest
             docker compose -f docker-compose.prod2.yml --env-file .env down || true
             docker compose -f docker-compose.prod2.yml --env-file .env up -d
             docker image prune -f
-
-      - name: Copy docker-compose.prod2.yml to EC2-2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST_2 }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: docker-compose.prod2.yml
-          target: /home/ubuntu/
