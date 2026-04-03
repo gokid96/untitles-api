@@ -76,7 +76,7 @@ jobs:
             DB_HOST=${{ secrets.DB_HOST }}
             DB_USERNAME=${{ secrets.DB_USERNAME }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            REDIS_HOST=${{ secrets.EC2_HOST_1 }}
+            REDIS_HOST=redis
             REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
             KAFKA_HOST=${{ secrets.EC2_HOST_2 }}
             AWS_ACCESS_KEY=${{ secrets.AWS_ACCESS_KEY }}
