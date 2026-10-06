@@ -32,19 +32,6 @@ public class FolderController {
     }
 
     /**
-     * 루트 폴더 목록 조회
-     * 워크스페이스 트리 조회 (폴더 + 게시글)
-     */
-//    @GetMapping
-//    public ResponseEntity<List<FolderResponseDTO>> getRootFolders(
-//                    @AuthenticationPrincipal CustomUserDetails userDetails,
-//            @PathVariable Long workspaceId) {
-//        {
-//            return ResponseEntity.ok(folderService.getRootFolders(userDetails.getUserId(), workspaceId));
-//        }
-//    }
-
-    /**
      * 폴더 생성
      */
     @PostMapping

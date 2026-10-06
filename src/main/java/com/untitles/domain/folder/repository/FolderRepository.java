@@ -16,14 +16,6 @@ public interface FolderRepository extends JpaRepository<Folder, Long> {
 
     List<Folder> findAllByWorkspaceWorkspaceId(Long workspaceId);
 
-    // 폴더과 게시글 한번에 조회
-    @Query("SELECT DISTINCT f FROM Folder f " +
-            "LEFT JOIN FETCH f.posts " +
-            "WHERE f.workspace.workspaceId = :workspaceId"
-    )
-    List<Folder> findAllByWorkspaceIdWithPosts(@Param("workspaceId") Long workspaceId);
-
-
     @Modifying
     @Query("UPDATE Folder f SET f.parent = null WHERE f.workspace.workspaceId = :workspaceId")
     void clearParentByWorkspaceId(@Param("workspaceId") Long workspaceId);
