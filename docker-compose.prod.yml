@@ -1,0 +1,107 @@
+# Production stack for one Docker host. No service publishes a host port: cloudflared keeps an
+# outbound Cloudflare Tunnel, Cloudflare terminates HTTPS for the API hostname and the tunnel
+# forwards plain HTTP to caddy:80 on this compose network.
+# The deploy workflow writes two files next to this one:
+#   .env     compose interpolation: IMAGE_NAME, IMAGE_TAG, DB_USERNAME, DB_PASSWORD,
+#            REDIS_PASSWORD, MYSQL_ROOT_PASSWORD, CLOUDFLARE_TUNNEL_TOKEN
+#   api.env  environment of the api container (no MYSQL_ROOT_PASSWORD, no tunnel token)
+name: untitles
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.0
+    restart: unless-stopped
+    # Remotely managed tunnel: the route from the API hostname to http://caddy:80 is set in
+    # the Cloudflare dashboard. The token reaches only this container.
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN is not set}
+      # Metrics stay on the container's loopback; `tunnel ready` below reads /ready there.
+      TUNNEL_METRICS: 127.0.0.1:2000
+    healthcheck:
+      # The image has no shell. `tunnel ready` exits 0 once a connection to Cloudflare is registered.
+      test: ["CMD", "cloudflared", "tunnel", "ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+      start_interval: 2s
+    depends_on:
+      - caddy
+    logging: *logging
+
+  caddy:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    volumes:
+      # Directory mount, so `caddy reload` sees a Caddyfile replaced by the deploy.
+      - ./deploy:/etc/caddy:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    logging: *logging
+
+  api:
+    image: ${IMAGE_NAME:-ghcr.io/gokid96/untitles-api}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file: api.env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging: *logging
+
+  mysql:
+    image: mysql:8.4.11
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: untitles # database in spring.datasource.url of application-prod.yml
+      MYSQL_USER: ${DB_USERNAME:?DB_USERNAME is not set}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is not set}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      # Logs in as the app user over TCP. The temporary server of the first-time init skips
+      # networking, so it never counts as healthy. $$ is expanded by the shell in the container.
+      test: ["CMD-SHELL", 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u "$$MYSQL_USER" -e "SELECT 1" "$$MYSQL_DATABASE" > /dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+      start_interval: 3s
+    logging: *logging
+
+  redis:
+    image: redis:7.2.16-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is not set}
+    # Cache only: no RDB snapshots, no AOF. The password goes in as config on stdin ("-"): as an
+    # argument, every account on the host could read it in the process list while Redis starts.
+    command:
+      - sh
+      - -c
+      - |
+        exec redis-server --save "" --appendonly no - <<EOF
+        requirepass '$$REDIS_PASSWORD'
+        EOF
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+      start_interval: 1s
+    logging: *logging
+
+volumes:
+  mysql-data:
+  caddy-data:
+  caddy-config:
