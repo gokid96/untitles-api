@@ -5,3 +5,6 @@
 *.log
 build/
 .gradle/
+.env
+api.env
+cookies.txt

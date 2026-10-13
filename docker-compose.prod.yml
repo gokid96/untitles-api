@@ -1,9 +1,10 @@
-# Production stack for one Docker host. No service publishes a host port: cloudflared keeps an
-# outbound Cloudflare Tunnel, Cloudflare terminates HTTPS for the API hostname and the tunnel
-# forwards plain HTTP to caddy:80 on this compose network.
-# The deploy workflow writes two files next to this one:
-#   .env     compose interpolation: IMAGE_NAME, IMAGE_TAG, DB_USERNAME, DB_PASSWORD,
-#            REDIS_PASSWORD, MYSQL_ROOT_PASSWORD, CLOUDFLARE_TUNNEL_TOKEN
+# Production stack for one Docker host, deployed by hand (see "Deployment" in README.md).
+# No service publishes a host port: cloudflared keeps an outbound Cloudflare Tunnel, Cloudflare
+# terminates HTTPS for the API hostname and the tunnel forwards plain HTTP to caddy:80 on this
+# compose network. The api image is built on this host from the repository.
+# Two files next to this one hold the secrets (mode 600, both in .gitignore):
+#   .env     compose interpolation: DB_USERNAME, DB_PASSWORD, REDIS_PASSWORD,
+#            MYSQL_ROOT_PASSWORD, CLOUDFLARE_TUNNEL_TOKEN
 #   api.env  environment of the api container (no MYSQL_ROOT_PASSWORD, no tunnel token)
 name: untitles
 
@@ -40,14 +41,19 @@ services:
     image: caddy:2.11.7-alpine
     restart: unless-stopped
     volumes:
-      # Directory mount, so `caddy reload` sees a Caddyfile replaced by the deploy.
+      # Directory mount, so `caddy reload` sees a Caddyfile updated by `git pull`.
       - ./deploy:/etc/caddy:ro
       - caddy-data:/data
       - caddy-config:/config
     logging: *logging
 
   api:
-    image: ${IMAGE_NAME:-ghcr.io/gokid96/untitles-api}:${IMAGE_TAG:-latest}
+    # Built on this host from the repository's Dockerfile, for the host's own CPU architecture.
+    build:
+      context: .
+      labels:
+        app: untitles-api # `docker image prune -f --filter label=app=untitles-api` removes only old api images
+    image: untitles-api:local
     restart: unless-stopped
     env_file: api.env
     depends_on:
