@@ -10,7 +10,6 @@ import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.workspace.entity.Workspace;
 import com.untitles.domain.workspace.entity.WorkspaceMember;
-import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.util.HtmlSanitizer;
@@ -27,7 +26,6 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final FolderRepository folderRepository;
-    private final WorkspaceMemberRepository workspaceMemberRepository;
     private final HtmlSanitizer htmlSanitizer;
     private final WorkspaceMemberHelper workspaceMemberHelper;
 

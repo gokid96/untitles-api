@@ -34,4 +34,8 @@ out/
 /.nb-gradle/
 
 ### VS Code ###
-.vscode/cookies.txt 
+.vscode/
+
+### Local secrets ###
+.env
+cookies.txt

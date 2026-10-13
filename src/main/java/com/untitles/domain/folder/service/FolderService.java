@@ -11,7 +11,6 @@ import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.workspace.entity.Workspace;
 import com.untitles.domain.workspace.entity.WorkspaceMember;
-import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.util.WorkspaceMemberHelper;
@@ -30,7 +29,6 @@ public class FolderService {
 
     private final FolderRepository folderRepository;
     private final PostRepository postRepository;
-    private final WorkspaceMemberRepository workspaceMemberRepository;
     private final WorkspaceMemberHelper workspaceMemberHelper;
 
     /**

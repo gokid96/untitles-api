@@ -17,7 +17,7 @@ import java.util.List;
 public class UserController {
     private final UserService userService;
 
-    // 조회 @AuthenticationPrincipal 로 인증정보 넘기는거로 수정하기
+    // 조회
     @GetMapping("/me")
     public ResponseEntity<UserResponseDTO> getUserInfo(@AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(userService.getUserInfo(userDetails.getUserId()));
@@ -29,7 +29,7 @@ public class UserController {
         return ResponseEntity.ok(userService.updateUser(userDetails.getUserId(), request));
     }
 
-    // 탈퇴 @AuthenticationPrincipal 로 인증정보 넘기는거로 수정하기
+    // 탈퇴
     @DeleteMapping("/me")
     public ResponseEntity<Void> deleteUser(@AuthenticationPrincipal CustomUserDetails userDetails) {
         userService.deleteUser(userDetails.getUserId());

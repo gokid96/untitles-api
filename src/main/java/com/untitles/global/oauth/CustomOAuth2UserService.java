@@ -5,7 +5,6 @@ import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.user.repository.UserRepository;
 import com.untitles.domain.workspace.entity.Workspace;
 import com.untitles.domain.workspace.entity.WorkspaceMember;
-import com.untitles.domain.workspace.entity.WorkspaceRole;
 import com.untitles.domain.workspace.entity.WorkspaceType;
 import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
@@ -148,11 +147,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         workspaceRepository.save(workspace);
 
-        WorkspaceMember member = WorkspaceMember.builder()
-                .workspace(workspace)
-                .user(user)
-                .role(WorkspaceRole.OWNER)
-                .build();
+        WorkspaceMember member = WorkspaceMember.createOwner(workspace, user);
 
         workspaceMemberRepository.save(member);
     }

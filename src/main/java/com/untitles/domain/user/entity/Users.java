@@ -78,13 +78,4 @@ public class Users {
                 .nickname(nickname)
                 .build();
     }
-
-    public static Users createOAuth(String email, String nickname, AuthProvider provider, String providerId) {
-        return Users.builder()
-                .email(email)
-                .nickname(nickname)
-                .provider(provider)
-                .providerId(providerId)
-                .build();
-    }
 }

@@ -2,7 +2,6 @@ package com.untitles.domain.publish.controller;
 
 import com.untitles.domain.publish.dto.response.PublicWorkspaceResponse;
 import com.untitles.domain.publish.service.PublicViewService;
-import com.untitles.global.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

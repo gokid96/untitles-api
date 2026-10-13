@@ -18,7 +18,7 @@ public class CustomUserDetails implements UserDetails {
     private final Long userId;
     private final String loginId;
 
-    // 기존 생성자 (로그인 시 사용)
+    // OAuth2 로그인용 생성자 (CustomOAuth2User에서 사용)
     public CustomUserDetails(Users user) {
         this.user = user;
         this.userId = null;
@@ -34,7 +34,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // 1인 블로그라 권한 구분 불필요, 기본 USER 권한 부여
+        // 워크스페이스 권한은 서비스 레이어에서 검사하므로 기본 USER 권한만 부여
         return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
@@ -56,15 +56,7 @@ public class CustomUserDetails implements UserDetails {
         return user != null ? user.getLoginId() : loginId;
     }
 
-    public String getNickname() {
-        return user != null ? user.getNickname() : null;
-    }
-
     public String getEmail() {
         return user != null ? user.getEmail() : null;
-    }
-
-    public String getProfileImage() {
-        return user != null ? user.getProfileImage() : null;
     }
 }

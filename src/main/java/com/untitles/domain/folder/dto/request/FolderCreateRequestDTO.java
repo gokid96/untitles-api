@@ -15,6 +15,5 @@ public class FolderCreateRequestDTO {
     @Size(max = 50, message = "폴더이름은 50자를 넘을 수 없습니다.")
     private String name;
     private Long parentId;
-    private Integer orderIndex;
 
 }

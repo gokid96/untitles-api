@@ -88,18 +88,6 @@ public class JwtProvider {
         return false;
     }
 
-    /**
-     * 토큰 만료 여부 확인
-     */
-    public boolean isExpired(String token) {
-        try {
-            getClaims(token);
-            return false;
-        } catch (ExpiredJwtException e) {
-            return true;
-        }
-    }
-
     private Claims getClaims(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)

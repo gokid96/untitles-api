@@ -6,8 +6,6 @@ import com.untitles.domain.post.entity.Post;
 import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.publish.dto.request.WorkspacePublishRequest;
 import com.untitles.domain.publish.dto.response.PublishSettingResponse;
-import com.untitles.domain.user.entity.Users;
-import com.untitles.domain.user.repository.UserRepository;
 import com.untitles.domain.workspace.entity.Workspace;
 import com.untitles.domain.workspace.entity.WorkspaceMember;
 import com.untitles.domain.workspace.entity.WorkspaceRole;
@@ -15,6 +13,7 @@ import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
+import com.untitles.global.util.WorkspaceMemberHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
@@ -35,9 +34,9 @@ public class PublishService {
 
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
-    private final UserRepository userRepository;
     private final FolderRepository folderRepository;
     private final PostRepository postRepository;
+    private final WorkspaceMemberHelper workspaceMemberHelper;
 
     /**
      * 공개 설정 조회 (트리 구조로 현재 상태 반환)
@@ -45,7 +44,7 @@ public class PublishService {
     @Transactional(readOnly = true)
     public PublishSettingResponse getPublishSettings(Long userId, Long workspaceId) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
-        checkAdminPermission(member);
+        workspaceMemberHelper.checkPermission(member, WorkspaceRole.ADMIN);
 
         Workspace workspace = member.getWorkspace();
         List<Folder> allFolders = folderRepository.findAllByWorkspaceWorkspaceId(workspaceId);
@@ -85,7 +84,7 @@ public class PublishService {
     public PublishSettingResponse updatePublishSettings(Long userId, Long workspaceId,
                                                         WorkspacePublishRequest request) {
         WorkspaceMember member = getMemberOrThrow(userId, workspaceId);
-        checkAdminPermission(member);
+        workspaceMemberHelper.checkPermission(member, WorkspaceRole.ADMIN);
 
         Workspace workspace = member.getWorkspace();
 
@@ -276,11 +275,5 @@ public class PublishService {
     private WorkspaceMember getMemberOrThrow(Long userId, Long workspaceId) {
         return workspaceMemberRepository.findWithWorkspaceByWorkspaceIdAndUserId(workspaceId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCESS_DENIED));
-    }
-
-    private void checkAdminPermission(WorkspaceMember member) {
-        if (!member.getRole().hasPermission(WorkspaceRole.ADMIN)) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_PERMISSION);
-        }
     }
 }

@@ -15,13 +15,4 @@ import java.util.List;
 public class WorkspaceTreeResponseDTO {
     private List<FolderResponseDTO> folders;
     private List<PostSimpleDTO> rootPosts;
-
-    public static WorkspaceTreeResponseDTO of(
-            List<FolderResponseDTO> folders,
-            List<PostSimpleDTO> rootPosts) {
-        return WorkspaceTreeResponseDTO.builder()
-                .folders(folders)
-                .rootPosts(rootPosts)
-                .build();
-    }
 }

@@ -57,7 +57,6 @@ public class EmailSender {
                     .build();
 
             sesV2Client.sendEmail(request);
-            //기존 EmailService의 sendEmail 로직
 
             log.info("이메일 발송 완료: {}", toEmail);
         }catch (Exception e){
