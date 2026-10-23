@@ -18,7 +18,7 @@ import java.io.IOException;
  * 요청 경로에 따라 다른 제한을 적용
  */
 @Slf4j
-// @Component  // 부하 테스트를 위해 임시 비활성화
+@Component
 @Order(1)  // 가장 먼저 실행
 @RequiredArgsConstructor
 public class RateLimitFilter implements Filter {
@@ -73,20 +73,12 @@ public class RateLimitFilter implements Filter {
     }
     
     /**
-     * 클라이언트 IP 추출 (프록시 고려)
+     * 클라이언트 IP 추출
+     * X-Forwarded-For는 클라이언트가 임의로 보낼 수 있으므로 직접 읽지 않는다.
+     * server.forward-headers-strategy=native 설정으로 Tomcat RemoteIpValve가
+     * 신뢰하는 내부 프록시(Caddy, cloudflared)를 건너뛰고 실제 클라이언트 IP를 remoteAddr에 넣어준다.
      */
     private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            // 첫 번째 IP가 실제 클라이언트 IP
-            return xForwardedFor.split(",")[0].trim();
-        }
-
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-
         return request.getRemoteAddr();
     }
 }
