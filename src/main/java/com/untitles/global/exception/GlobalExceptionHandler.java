@@ -6,13 +6,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.hibernate.StaleObjectStateException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.transaction.TransactionSystemException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -106,6 +113,43 @@ public class GlobalExceptionHandler {
 
         log.warn("Validation error: {}", message);
         return createErrorResponse(HttpStatus.BAD_REQUEST, message);
+    }
+
+    /**
+     * 존재하지 않는 경로 (404)
+     */
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(Exception e) {
+        return createErrorResponse(HttpStatus.NOT_FOUND, "요청한 경로를 찾을 수 없습니다.");
+    }
+
+    /**
+     * 지원하지 않는 HTTP 메서드 (405)
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
+        return createErrorResponse(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 요청 방식입니다.");
+    }
+
+    /**
+     * 지원하지 않는 Content-Type (415)
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException e) {
+        return createErrorResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 요청 형식입니다.");
+    }
+
+    /**
+     * 잘못된 요청 형식: 깨진 JSON, 파라미터 누락, 타입 불일치 (400)
+     */
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleBadRequest(Exception e) {
+        log.warn("Bad request: {}", e.getMessage());
+        return createErrorResponse(HttpStatus.BAD_REQUEST, "잘못된 요청입니다.");
     }
 
     /**
