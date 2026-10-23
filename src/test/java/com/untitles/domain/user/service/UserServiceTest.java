@@ -76,4 +76,12 @@ class UserServiceTest {
         assertThat(user.getProfileImage()).isNull();
         verify(imageService).deleteProfileImage("https://img/profiles/7/old.png", 7L);
     }
+
+    @Test
+    @DisplayName("검색어가 2글자 미만이면 DB를 조회하지 않는다")
+    void searchMinLength() {
+        assertThat(userService.searchUsers("a", 7L)).isEmpty();
+        assertThat(userService.searchUsers("  ", 7L)).isEmpty();
+        verifyNoInteractions(userRepository);
+    }
 }

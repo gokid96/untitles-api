@@ -3,6 +3,7 @@ package com.untitles.domain.user.service;
 import com.untitles.domain.image.service.ImageService;
 import com.untitles.domain.user.dto.request.UserUpdateRequestDTO;
 import com.untitles.domain.user.dto.response.UserResponseDTO;
+import com.untitles.domain.user.dto.response.UserSearchResponseDTO;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.user.repository.UserRepository;
 import com.untitles.global.exception.BusinessException;
@@ -10,6 +11,7 @@ import com.untitles.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -26,6 +28,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ImageService imageService;
+
+    private static final int SEARCH_MIN_LENGTH = 2;
+    private static final int SEARCH_LIMIT = 10;
 
     /**
      * 조회
@@ -102,14 +107,15 @@ public class UserService {
     /**
      * 이메일 또는 닉네임으로 사용자 검색 (멤버 초대용)
      */
-    public List<UserResponseDTO> searchUsers(String query, Long currentUserId) {
-        if (!StringUtils.hasText(query)) {
+    public List<UserSearchResponseDTO> searchUsers(String query, Long currentUserId) {
+        String trimmed = query == null ? "" : query.trim();
+        if (trimmed.length() < SEARCH_MIN_LENGTH) {
             return List.of();
         }
-        return userRepository.findByEmailOrNicknameContaining(query).stream()
-                .filter(user -> !user.getUserId().equals(currentUserId))
-                .limit(10)
-                .map(UserResponseDTO::from)
+        String likeQuery = trimmed.replace("!", "!!").replace("%", "!%").replace("_", "!_");
+        return userRepository.searchForInvite(trimmed, likeQuery, currentUserId, PageRequest.of(0, SEARCH_LIMIT))
+                .stream()
+                .map(UserSearchResponseDTO::from)
                 .collect(Collectors.toList());
     }
 }

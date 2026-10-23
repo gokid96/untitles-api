@@ -4,6 +4,7 @@ import com.untitles.global.security.CustomUserDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.untitles.domain.user.dto.request.UserUpdateRequestDTO;
 import com.untitles.domain.user.dto.response.UserResponseDTO;
+import com.untitles.domain.user.dto.response.UserSearchResponseDTO;
 import com.untitles.domain.user.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +40,7 @@ public class UserController {
 
     // 이메일 또는 닉네임으로 사용자 검색 (초대용)
     @GetMapping("/search")
-    public ResponseEntity<List<UserResponseDTO>> searchUsers(
+    public ResponseEntity<List<UserSearchResponseDTO>> searchUsers(
             @RequestParam String query,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(userService.searchUsers(query, userDetails.getUserId()));
