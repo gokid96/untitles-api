@@ -13,6 +13,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Method;
+import java.util.Optional;
+
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -57,5 +63,54 @@ class EmailServiceTest {
         inOrder.verify(verificationRepository).deleteByEmail(EMAIL);
         inOrder.verify(verificationRepository).save(any(EmailVerification.class));
         inOrder.verify(emailSender).sendAsync(eq(EMAIL), anyString());
+    }
+
+    @Test
+    @DisplayName("인증번호는 항상 6자리 숫자다")
+    void codeIsSixDigits() {
+        when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
+
+        emailService.sendVerificationCode(EMAIL);
+
+        verify(emailSender).sendAsync(eq(EMAIL), argThat(code -> code.matches("\\d{6}")));
+    }
+
+    @Test
+    @DisplayName("틀리면 시도 횟수가 늘고, 5회 틀리면 맞는 코드도 거부한다")
+    void attemptLimit() {
+        EmailVerification verification = EmailVerification.create(EMAIL, "123456", 10);
+        when(verificationRepository.findByEmailAndVerifiedFalse(EMAIL)).thenReturn(Optional.of(verification));
+
+        for (int i = 0; i < EmailVerification.MAX_ATTEMPTS; i++) {
+            assertThatThrownBy(() -> emailService.verifyCode(EMAIL, "000000"))
+                    .extracting("errorCode").isEqualTo(ErrorCode.VERIFICATION_CODE_MISMATCH);
+        }
+        assertThat(verification.getAttemptCount()).isEqualTo(EmailVerification.MAX_ATTEMPTS);
+
+        assertThatThrownBy(() -> emailService.verifyCode(EMAIL, "123456"))
+                .extracting("errorCode").isEqualTo(ErrorCode.VERIFICATION_ATTEMPTS_EXCEEDED);
+        assertThat(verification.isVerified()).isFalse();
+    }
+
+    @Test
+    @DisplayName("한도 안에서는 맞는 코드로 인증된다")
+    void verifyAfterMistake() {
+        EmailVerification verification = EmailVerification.create(EMAIL, "123456", 10);
+        when(verificationRepository.findByEmailAndVerifiedFalse(EMAIL)).thenReturn(Optional.of(verification));
+
+        assertThatThrownBy(() -> emailService.verifyCode(EMAIL, "000000"))
+                .isInstanceOf(BusinessException.class);
+
+        assertThat(emailService.verifyCode(EMAIL, "123456")).isTrue();
+        assertThat(verification.isVerified()).isTrue();
+    }
+
+    @Test
+    @DisplayName("인증 실패 예외가 나도 시도 횟수 증가는 롤백되지 않는다")
+    void attemptCountNotRolledBack() throws Exception {
+        Method method = EmailService.class.getMethod("verifyCode", String.class, String.class);
+        Transactional tx = method.getAnnotation(Transactional.class);
+
+        assertThat(tx.noRollbackFor()).contains(BusinessException.class);
     }
 }

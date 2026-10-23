@@ -12,6 +12,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class EmailVerification {
 
+    public static final int MAX_ATTEMPTS = 5;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -27,6 +29,9 @@ public class EmailVerification {
 
     @Column(nullable = false)
     private LocalDateTime expiresAt;
+
+    @Column(nullable = false)
+    private int attemptCount;
 
     private LocalDateTime createdAt;
 
@@ -46,6 +51,14 @@ public class EmailVerification {
 
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(this.expiresAt);
+    }
+
+    public boolean isAttemptExceeded() {
+        return this.attemptCount >= MAX_ATTEMPTS;
+    }
+
+    public void increaseAttempt() {
+        this.attemptCount++;
     }
 
     public void verify() {

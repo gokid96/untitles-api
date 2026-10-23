@@ -49,7 +49,10 @@ public enum ErrorCode {
 
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "멤버를 찾을 수 없습니다."),
     // 409 Conflict
-    VERSION_CONFLICT(HttpStatus.CONFLICT, "다른 곳에서 수정되었습니다.");
+    VERSION_CONFLICT(HttpStatus.CONFLICT, "다른 곳에서 수정되었습니다."),
+
+    // 429 Too Many Requests
+    VERIFICATION_ATTEMPTS_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "인증 시도 횟수를 초과했습니다. 인증번호를 다시 요청해주세요.");
 
 
     private final HttpStatus status;

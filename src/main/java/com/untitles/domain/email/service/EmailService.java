@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Random;
+import java.security.SecureRandom;
 
 // domain/email/service/EmailService.java
 @Slf4j
@@ -24,6 +24,7 @@ public class EmailService {
     private final EmailSender emailSender;
 
     private static final int EXPIRATION_MINUTES = 10;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     /**
      * 이메일 중복 확인
@@ -46,7 +47,7 @@ public class EmailService {
         verificationRepository.deleteByEmail(email);
 
         // 6자리 인증번호 생성
-        String verificationCode = String.format("%06d", new Random().nextInt(1000000));
+        String verificationCode = String.format("%06d", RANDOM.nextInt(1_000_000));
 
         // DB 저장
         EmailVerification verification = EmailVerification.create(email, verificationCode, EXPIRATION_MINUTES);
@@ -61,7 +62,7 @@ public class EmailService {
     /**
      * 인증번호 확인
      */
-    @Transactional
+    @Transactional(noRollbackFor = BusinessException.class)  // 실패 횟수 증가는 예외가 나도 저장
     public boolean verifyCode(String email, String code) {
         EmailVerification verification = verificationRepository
                 .findByEmailAndVerifiedFalse(email)
@@ -72,8 +73,14 @@ public class EmailService {
             throw new BusinessException(ErrorCode.VERIFICATION_CODE_EXPIRED);
         }
 
+        // 시도 횟수 초과 확인
+        if (verification.isAttemptExceeded()) {
+            throw new BusinessException(ErrorCode.VERIFICATION_ATTEMPTS_EXCEEDED);
+        }
+
         // 코드 일치 확인
         if (!verification.getCode().equals(code)) {
+            verification.increaseAttempt();
             throw new BusinessException(ErrorCode.VERIFICATION_CODE_MISMATCH);
         }
 
