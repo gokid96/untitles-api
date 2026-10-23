@@ -4,6 +4,7 @@ import com.untitles.domain.email.dto.request.EmailCheckRequest;
 import com.untitles.domain.email.dto.request.EmailSendRequest;
 import com.untitles.domain.email.dto.request.EmailVerifyRequest;
 import com.untitles.domain.email.service.EmailService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,7 +25,7 @@ public class EmailController {
      * 이메일 중복 확인
      */
     @PostMapping("/check")
-    public ResponseEntity<Map<String, Object>> checkEmail(@RequestBody EmailCheckRequest request) {
+    public ResponseEntity<Map<String, Object>> checkEmail(@RequestBody @Valid EmailCheckRequest request) {
         boolean isDuplicate = emailService.checkDuplicate(request.email());
         return ResponseEntity.ok(Map.of(
                 "available", !isDuplicate,
@@ -36,7 +37,7 @@ public class EmailController {
      * 인증번호 발송
      */
     @PostMapping("/send")
-    public ResponseEntity<Map<String, String>> sendCode(@RequestBody EmailSendRequest request) {
+    public ResponseEntity<Map<String, String>> sendCode(@RequestBody @Valid EmailSendRequest request) {
         emailService.sendVerificationCode(request.email());
         return ResponseEntity.ok(Map.of("message", "인증번호가 발송되었습니다."));
     }
@@ -45,11 +46,11 @@ public class EmailController {
      * 인증번호 확인
      */
     @PostMapping("/verify")
-    public ResponseEntity<Map<String, Object>> verifyCode(@RequestBody EmailVerifyRequest request) {
+    public ResponseEntity<Map<String, Object>> verifyCode(@RequestBody @Valid EmailVerifyRequest request) {
         boolean verified = emailService.verifyCode(request.email(), request.code());
         return ResponseEntity.ok(Map.of(
                 "verified", verified,
                 "message", "이메일 인증이 완료되었습니다."
         ));
     }
-}
+}

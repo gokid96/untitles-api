@@ -5,6 +5,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.untitles.domain.user.dto.request.UserUpdateRequestDTO;
 import com.untitles.domain.user.dto.response.UserResponseDTO;
 import com.untitles.domain.user.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,7 +26,7 @@ public class UserController {
 
     // 수정
     @PatchMapping("/me")
-    public ResponseEntity<UserResponseDTO> updateUser(@AuthenticationPrincipal CustomUserDetails userDetails, @RequestBody UserUpdateRequestDTO request) {
+    public ResponseEntity<UserResponseDTO> updateUser(@AuthenticationPrincipal CustomUserDetails userDetails, @RequestBody @Valid UserUpdateRequestDTO request) {
         return ResponseEntity.ok(userService.updateUser(userDetails.getUserId(), request));
     }
 

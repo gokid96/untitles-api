@@ -4,6 +4,7 @@ import com.untitles.domain.auth.dto.response.LoginResponse;
 import com.untitles.domain.auth.service.AuthService;
 import com.untitles.domain.user.dto.request.UserCreateRequestDTO;
 import com.untitles.domain.user.dto.request.UserLoginRequestDTO;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +23,7 @@ public class AuthController {
      * 로그인
      */
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody UserLoginRequestDTO request) {
+    public ResponseEntity<LoginResponse> login(@RequestBody @Valid UserLoginRequestDTO request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
@@ -30,7 +31,7 @@ public class AuthController {
      * 회원가입
      */
     @PostMapping("/signup")
-    public ResponseEntity<LoginResponse> signup(@RequestBody UserCreateRequestDTO request) {
+    public ResponseEntity<LoginResponse> signup(@RequestBody @Valid UserCreateRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.signup(request));
     }
 
