@@ -15,6 +15,7 @@ import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,6 +33,9 @@ public class AuthService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final JwtProvider jwtProvider;
+
+    @Value("${app.signup.email-verification-required:true}")
+    private boolean emailVerificationRequired;
 
     /**
      * 로그인 - JWT 발급
@@ -58,7 +62,7 @@ public class AuthService {
      */
     @Transactional
     public LoginResponse signup(UserCreateRequestDTO request) {
-        if (!emailService.isVerified(request.getEmail())) {
+        if (emailVerificationRequired && !emailService.isVerified(request.getEmail())) {
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
         if (userRepository.existsByEmail(request.getEmail())) {

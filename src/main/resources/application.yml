@@ -112,3 +112,6 @@ cloudflare:
 app:
   oauth2:
     redirect-uri: http://localhost:5173
+  signup:
+    # 회원가입 시 이메일 인증 필수 여부. 메일 발송 수단을 붙이면 EMAIL_VERIFICATION_REQUIRED=true로 켠다
+    email-verification-required: ${EMAIL_VERIFICATION_REQUIRED:false}
