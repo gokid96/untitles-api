@@ -6,8 +6,6 @@ import com.untitles.domain.folder.dto.response.FolderResponseDTO;
 import com.untitles.domain.folder.dto.response.WorkspaceTreeResponseDTO;
 import com.untitles.domain.folder.entity.Folder;
 import com.untitles.domain.folder.repository.FolderRepository;
-import com.untitles.domain.post.dto.response.PostSimpleDTO;
-import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.workspace.entity.Workspace;
 import com.untitles.domain.workspace.entity.WorkspaceMember;
@@ -16,7 +14,6 @@ import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.util.WorkspaceMemberHelper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,8 +25,8 @@ import java.util.List;
 public class FolderService {
 
     private final FolderRepository folderRepository;
-    private final PostRepository postRepository;
     private final WorkspaceMemberHelper workspaceMemberHelper;
+    private final WorkspaceTreeReader workspaceTreeReader;
 
     /**
      * 폴더 생성
@@ -128,26 +125,10 @@ public class FolderService {
 
     /**
      * 워크스페이스 트리 조회 (루트 폴더 + 루트 게시글)
+     * 멤버 확인은 캐시 밖에서 매번 수행한다. 캐시는 WorkspaceTreeReader가 담당
      */
-    @Cacheable(value = "workspaceTree", key = "#workspaceId")
     public WorkspaceTreeResponseDTO getRootFolders(Long userId, Long workspaceId) {
         workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
-
-        List<FolderResponseDTO> folders = folderRepository
-                .findByWorkspaceWorkspaceIdAndParentIsNull(workspaceId)
-                .stream()
-                .map(FolderResponseDTO::from)
-                .toList();
-
-        List<PostSimpleDTO> rootPosts = postRepository
-                .findByWorkspaceWorkspaceIdAndFolderIsNull(workspaceId)
-                .stream()
-                .map(PostSimpleDTO::from)
-                .toList();
-
-        return WorkspaceTreeResponseDTO.builder()
-                .folders(folders)
-                .rootPosts(rootPosts)
-                .build();
+        return workspaceTreeReader.getTree(workspaceId);
     }
 }
