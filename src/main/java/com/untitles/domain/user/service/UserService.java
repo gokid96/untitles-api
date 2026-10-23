@@ -4,7 +4,16 @@ import com.untitles.domain.image.service.ImageService;
 import com.untitles.domain.user.dto.request.UserUpdateRequestDTO;
 import com.untitles.domain.user.dto.response.UserResponseDTO;
 import com.untitles.domain.user.dto.response.UserSearchResponseDTO;
+import com.untitles.domain.email.repository.EmailVerificationRepository;
+import com.untitles.domain.folder.repository.FolderRepository;
+import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.user.entity.Users;
+import com.untitles.domain.workspace.entity.Workspace;
+import com.untitles.domain.workspace.entity.WorkspaceMember;
+import com.untitles.domain.workspace.entity.WorkspaceRole;
+import com.untitles.domain.workspace.entity.WorkspaceType;
+import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
+import com.untitles.domain.workspace.service.WorkspaceService;
 import com.untitles.domain.user.repository.UserRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
@@ -28,6 +37,11 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ImageService imageService;
+    private final WorkspaceService workspaceService;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final PostRepository postRepository;
+    private final FolderRepository folderRepository;
+    private final EmailVerificationRepository emailVerificationRepository;
 
     private static final int SEARCH_MIN_LENGTH = 2;
     private static final int SEARCH_LIMIT = 10;
@@ -89,6 +103,32 @@ public class UserService {
     public void deleteUser(Long userId) {
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        List<WorkspaceMember> memberships = workspaceMemberRepository.findAllByUserUserId(userId);
+        List<Workspace> ownedWorkspaces = memberships.stream()
+                .filter(m -> m.getRole() == WorkspaceRole.OWNER)
+                .map(WorkspaceMember::getWorkspace)
+                .toList();
+
+        // 1. 다른 멤버가 남아 있는 팀 워크스페이스의 소유자는 탈퇴 불가 (남의 데이터가 함께 지워지므로)
+        for (Workspace workspace : ownedWorkspaces) {
+            if (workspace.getType() == WorkspaceType.TEAM && workspaceMemberRepository.countByWorkspace(workspace) > 1) {
+                throw new BusinessException(ErrorCode.OWNER_HAS_TEAM_MEMBERS);
+            }
+        }
+
+        // 2. 소유한 워크스페이스(개인 + 혼자 쓰는 팀) 전체 삭제
+        ownedWorkspaces.forEach(workspaceService::deleteWorkspaceData);
+
+        // 3. 다른 워크스페이스 멤버십 삭제, 남긴 글·폴더는 작성자만 비움
+        workspaceMemberRepository.deleteAllByUserId(userId);
+        postRepository.clearAuthor(userId);
+        folderRepository.clearUser(userId);
+
+        // 4. 이메일 인증 데이터, 프로필 이미지, 사용자 삭제
+        if (StringUtils.hasText(user.getEmail())) {
+            emailVerificationRepository.deleteByEmail(user.getEmail());
+        }
         deleteProfileImageQuietly(user.getProfileImage(), userId);
         userRepository.delete(user);
     }

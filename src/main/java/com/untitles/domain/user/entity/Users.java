@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 @Builder
 public class Users {
 
+    public static final String DELETED_USER_NICKNAME = "탈퇴한 사용자";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")

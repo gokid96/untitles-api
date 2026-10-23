@@ -1,5 +1,6 @@
 package com.untitles.domain.publish.service;
 
+import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.folder.entity.Folder;
 import com.untitles.domain.folder.repository.FolderRepository;
 import com.untitles.domain.post.dto.response.PostSimpleDTO;
@@ -113,7 +114,7 @@ public class PublicViewService {
                 .postId(post.getPostId())
                 .title(post.getTitle())
                 .content(post.getContent())
-                .authorNickname(post.getAuthor().getNickname())
+                .authorNickname(post.getAuthor() != null ? post.getAuthor().getNickname() : Users.DELETED_USER_NICKNAME)
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .build();

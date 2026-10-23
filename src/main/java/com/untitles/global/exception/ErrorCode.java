@@ -26,6 +26,7 @@ public enum ErrorCode {
     ALREADY_WORKSPACE_MEMBER(HttpStatus.BAD_REQUEST, "이미 워크스페이스 멤버입니다."),
     CANNOT_MODIFY_HIGHER_ROLE(HttpStatus.BAD_REQUEST, "동급 이상의 권한은 변경할 수 없습니다."),
     OWNER_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "OWNER는 워크스페이스를 나갈 수 없습니다."),
+    OWNER_HAS_TEAM_MEMBERS(HttpStatus.BAD_REQUEST, "다른 멤버가 있는 워크스페이스의 소유자는 탈퇴할 수 없습니다. 워크스페이스를 삭제하거나 멤버를 내보낸 뒤 다시 시도해주세요."),
 
     // 400 Bad Request (이메일 인증 관련)
     ALREADY_REGISTERED_EMAIL(HttpStatus.BAD_REQUEST, "이미 가입된 이메일입니다."),

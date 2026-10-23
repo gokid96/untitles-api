@@ -27,7 +27,7 @@ public class Folder {
     private Long folderId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id")  // 탈퇴한 사용자가 만든 폴더는 null
     private Users user;
 
     @ManyToOne(fetch = FetchType.LAZY)

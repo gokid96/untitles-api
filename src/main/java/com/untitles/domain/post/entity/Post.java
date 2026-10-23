@@ -41,7 +41,7 @@ public class Post {
     private LocalDateTime updatedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id")  // 탈퇴한 사용자의 글은 null
     private Users author;
 
     @ManyToOne(fetch = FetchType.LAZY)

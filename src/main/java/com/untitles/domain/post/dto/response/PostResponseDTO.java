@@ -1,5 +1,6 @@
 package com.untitles.domain.post.dto.response;
 
+import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.post.entity.Post;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -36,8 +37,8 @@ public class PostResponseDTO {
                 .version(post.getVersion())
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
-                .authorId(post.getAuthor().getUserId())
-                .authNickname(post.getAuthor().getNickname())
+                .authorId(post.getAuthor() != null ? post.getAuthor().getUserId() : null)
+                .authNickname(post.getAuthor() != null ? post.getAuthor().getNickname() : Users.DELETED_USER_NICKNAME)
                 .folderId(post.getFolder() != null ? post.getFolder().getFolderId() : null)
                 .build();
 

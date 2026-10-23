@@ -42,4 +42,10 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
 
     long countByWorkspace(Workspace workspace);
 
+    List<WorkspaceMember> findAllByUserUserId(Long userId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM WorkspaceMember wm WHERE wm.user.userId = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
+
 }
