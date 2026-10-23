@@ -26,7 +26,7 @@ public class ImageController{
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam("file") MultipartFile file) {
 
-        String url = imageService.upload(file, "posts");
+        String url = imageService.uploadPostImage(file);
         return ResponseEntity.ok(Map.of("url", url));
     }
 
@@ -38,7 +38,7 @@ public class ImageController{
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam("file") MultipartFile file) {
 
-        String url = imageService.upload(file, "profiles");
+        String url = imageService.uploadProfileImage(file, userDetails.getUserId());
         return ResponseEntity.ok(Map.of("url", url));
     }
 }

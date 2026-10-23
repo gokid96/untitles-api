@@ -52,15 +52,16 @@ public class UserService {
             user.updateNickname(request.getNickname());
         }
         if (request.getProfileImage() != null) {
-            String oldProfileImage = user.getProfileImage();
-            try {
-                if (StringUtils.hasText(oldProfileImage)) {
-                    imageService.delete(oldProfileImage);
-                }
-            } catch (Exception e) {
-                log.warn("프로필 이미지 삭제 실패:{}", oldProfileImage, e);
+            // 빈 값이면 프로필 이미지 제거, 아니면 본인이 업로드한 이미지만 허용
+            String newProfileImage = StringUtils.hasText(request.getProfileImage()) ? request.getProfileImage() : null;
+            if (newProfileImage != null && !imageService.isOwnProfileImage(newProfileImage, userId)) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT);
             }
-            user.updateProfileImage(request.getProfileImage());
+            String oldProfileImage = user.getProfileImage();
+            if (oldProfileImage != null && !oldProfileImage.equals(newProfileImage)) {
+                deleteProfileImageQuietly(oldProfileImage, userId);
+            }
+            user.updateProfileImage(newProfileImage);
         }
         if (StringUtils.hasText(request.getNewPassword())) {
             if (!StringUtils.hasText(request.getCurrentPassword())) {
@@ -83,14 +84,19 @@ public class UserService {
     public void deleteUser(Long userId) {
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        try {
-            if (StringUtils.hasText(user.getProfileImage())) {
-                imageService.delete(user.getProfileImage());
-            }
-        } catch (Exception e) {
-            log.warn("프로필 이미지 삭제 실패: {}", user.getProfileImage(), e);
-        }
+        deleteProfileImageQuietly(user.getProfileImage(), userId);
         userRepository.delete(user);
+    }
+
+    /**
+     * 본인 경로의 프로필 이미지만 삭제 (실패해도 진행)
+     */
+    private void deleteProfileImageQuietly(String imageUrl, Long userId) {
+        try {
+            imageService.deleteProfileImage(imageUrl, userId);
+        } catch (Exception e) {
+            log.warn("프로필 이미지 삭제 실패: {}", imageUrl, e);
+        }
     }
 
     /**
