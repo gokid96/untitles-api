@@ -70,4 +70,21 @@ class AuthControllerValidationTest {
                 .andExpect(status().isBadRequest());
         verify(authService, never()).login(any());
     }
+
+    @Test
+    @DisplayName("이메일 없이도 가입 요청이 검증을 통과한다")
+    void signupWithoutEmailPasses() throws Exception {
+        signup("""
+                {"loginId":"tester","password":"abcd1234!","nickname":"테스터"}
+                """, 201);
+        verify(authService).signup(any());
+    }
+
+    @Test
+    @DisplayName("이메일을 보냈다면 형식은 검사한다")
+    void invalidEmailRejected() throws Exception {
+        signup("""
+                {"email":"not-an-email","loginId":"tester","password":"abcd1234!","nickname":"테스터"}
+                """, 400);
+    }
 }

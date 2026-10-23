@@ -78,4 +78,35 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.signup(request))
                 .extracting("errorCode").isEqualTo(ErrorCode.DUPLICATE_EMAIL);
     }
+
+    @Test
+    @DisplayName("이메일 없이 가입하면 이메일은 null로 저장하고 이메일 중복 검사를 건너뛴다")
+    void signupWithoutEmail() {
+        ReflectionTestUtils.setField(authService, "emailVerificationRequired", false);
+        UserCreateRequestDTO noEmail = UserCreateRequestDTO.builder()
+                .email("").loginId("tester").password("abcd1234!").nickname("테스터").build();
+        when(passwordEncoder.encode("abcd1234!")).thenReturn("hashed");
+        when(userRepository.save(any(Users.class))).thenAnswer(inv -> {
+            Users user = inv.getArgument(0);
+            ReflectionTestUtils.setField(user, "userId", 1L);
+            return user;
+        });
+
+        authService.signup(noEmail);
+
+        verify(userRepository, never()).existsByEmail(any());
+        verify(userRepository).save(argThat(user -> user.getEmail() == null));
+        verify(emailService, never()).deleteVerification(any());
+    }
+
+    @Test
+    @DisplayName("이메일 인증이 필수인데 이메일이 없으면 가입할 수 없다")
+    void verificationRequiredWithoutEmail() {
+        ReflectionTestUtils.setField(authService, "emailVerificationRequired", true);
+        UserCreateRequestDTO noEmail = UserCreateRequestDTO.builder()
+                .loginId("tester").password("abcd1234!").nickname("테스터").build();
+
+        assertThatThrownBy(() -> authService.signup(noEmail))
+                .extracting("errorCode").isEqualTo(ErrorCode.EMAIL_NOT_VERIFIED);
+    }
 }

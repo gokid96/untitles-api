@@ -264,7 +264,7 @@ class WorkspaceServiceTest {
         @DisplayName("성공")
         void success() {
             // given
-            MemberInviteRequest request = new MemberInviteRequest("other@test.com", WorkspaceRole.MEMBER);
+            MemberInviteRequest request = new MemberInviteRequest(null, "other@test.com", WorkspaceRole.MEMBER);
 
             stubMember(1L, 1L, ownerMember);
             when(userRepository.findByEmail("other@test.com")).thenReturn(Optional.of(otherUser));
@@ -286,10 +286,29 @@ class WorkspaceServiceTest {
         }
 
         @Test
+        @DisplayName("성공 - userId로 초대 (이메일 없는 사용자)")
+        void success_byUserId() {
+            // given
+            MemberInviteRequest request = new MemberInviteRequest(2L, null, WorkspaceRole.MEMBER);
+
+            stubMember(1L, 1L, ownerMember);
+            when(userRepository.findById(2L)).thenReturn(Optional.of(otherUser));
+            when(memberRepository.existsByWorkspaceAndUser(testWorkspace, otherUser)).thenReturn(false);
+            when(memberRepository.save(any(WorkspaceMember.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            workspaceService.inviteMember(1L, 1L, request);
+
+            // then
+            verify(userRepository, never()).findByEmail(any());
+            verify(memberRepository).save(any(WorkspaceMember.class));
+        }
+
+        @Test
         @DisplayName("실패 - OWNER 권한 부여 불가")
         void fail_cannotAssignOwner() {
             // given
-            MemberInviteRequest request = new MemberInviteRequest("other@test.com", WorkspaceRole.OWNER);
+            MemberInviteRequest request = new MemberInviteRequest(null, "other@test.com", WorkspaceRole.OWNER);
             stubMember(1L, 1L, ownerMember);
 
             // when & then
@@ -303,7 +322,7 @@ class WorkspaceServiceTest {
         @DisplayName("실패 - 이미 멤버")
         void fail_alreadyMember() {
             // given
-            MemberInviteRequest request = new MemberInviteRequest("other@test.com", WorkspaceRole.MEMBER);
+            MemberInviteRequest request = new MemberInviteRequest(null, "other@test.com", WorkspaceRole.MEMBER);
 
             stubMember(1L, 1L, ownerMember);
             when(userRepository.findByEmail("other@test.com")).thenReturn(Optional.of(otherUser));

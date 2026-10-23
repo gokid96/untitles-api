@@ -20,7 +20,7 @@ public class Users {
     @Column(name = "user_id")
     private Long userId;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(unique = true, length = 100)  // 이메일 없이 가입한 계정은 null
     private String email;
 
     @Column(name = "login_id", unique = true, length = 50)

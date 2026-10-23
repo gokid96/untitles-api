@@ -123,7 +123,9 @@ public class WorkspaceService {
             throw new BusinessException(ErrorCode.CANNOT_ASSIGN_OWNER_ROLE);
         }
 
-        Users invitee = userRepository.findByEmail(request.email())
+        Users invitee = (request.userId() != null
+                ? userRepository.findById(request.userId())
+                : userRepository.findByEmail(request.email()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         long memberCount = workspaceMemberRepository.countByWorkspace(inviter.getWorkspace());

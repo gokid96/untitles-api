@@ -20,6 +20,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
@@ -62,10 +63,12 @@ public class AuthService {
      */
     @Transactional
     public LoginResponse signup(UserCreateRequestDTO request) {
-        if (emailVerificationRequired && !emailService.isVerified(request.getEmail())) {
+        String email = StringUtils.hasText(request.getEmail()) ? request.getEmail().trim() : null;
+
+        if (emailVerificationRequired && (email == null || !emailService.isVerified(email))) {
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (email != null && userRepository.existsByEmail(email)) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
         if (userRepository.existsByLoginId(request.getLoginId())) {
@@ -76,7 +79,7 @@ public class AuthService {
         }
 
         Users user = Users.createLocal(
-                request.getEmail(),
+                email,
                 request.getLoginId(),
                 passwordEncoder.encode(request.getPassword()),
                 request.getNickname()
@@ -90,7 +93,9 @@ public class AuthService {
         WorkspaceMember owner = WorkspaceMember.createOwner(personalWorkspace, savedUser);
         workspaceMemberRepository.save(owner);
 
-        emailService.deleteVerification(request.getEmail());
+        if (email != null) {
+            emailService.deleteVerification(email);
+        }
 
         String accessToken = jwtProvider.createAccessToken(savedUser.getUserId(), savedUser.getLoginId());
         String refreshToken = jwtProvider.createRefreshToken(savedUser.getUserId(), savedUser.getLoginId());

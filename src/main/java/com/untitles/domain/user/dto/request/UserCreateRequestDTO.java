@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class UserCreateRequestDTO {
 
-    @NotBlank(message = "이메일은 필수입니다")
+    // 이메일 인증을 끈 동안은 선택 입력 (비어 있으면 이메일 없이 가입)
     @Email(message = "올바른 이메일 형식이 아닙니다")
     @Size(max = 100, message = "이메일은 100자를 초과할 수 없습니다")
     private String email;
