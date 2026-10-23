@@ -37,13 +37,13 @@ public class EmailService {
      */
     @Transactional
     public void sendVerificationCode(String email) {
-        // 이미 가입된 이메일인지 확인- 부하테스트용 임시 주석
-//         if (userRepository.existsByEmail(email)) {
-//             throw new BusinessException(ErrorCode.ALREADY_REGISTERED_EMAIL);
-//         }
-//
-//        // 기존 인증 데이터 삭제
-//        verificationRepository.deleteByEmail(email);
+        // 이미 가입된 이메일인지 확인
+        if (userRepository.existsByEmail(email)) {
+            throw new BusinessException(ErrorCode.ALREADY_REGISTERED_EMAIL);
+        }
+
+        // 기존 인증 데이터 삭제 (이메일당 인증 데이터는 항상 1건)
+        verificationRepository.deleteByEmail(email);
 
         // 6자리 인증번호 생성
         String verificationCode = String.format("%06d", new Random().nextInt(1000000));
