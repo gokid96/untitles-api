@@ -26,6 +26,11 @@ public enum ErrorCode {
     ALREADY_WORKSPACE_MEMBER(HttpStatus.BAD_REQUEST, "이미 워크스페이스 멤버입니다."),
     CANNOT_MODIFY_HIGHER_ROLE(HttpStatus.BAD_REQUEST, "동급 이상의 권한은 변경할 수 없습니다."),
     OWNER_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "OWNER는 워크스페이스를 나갈 수 없습니다."),
+
+    // 400 Bad Request (이미지 업로드)
+    IMAGE_EMPTY(HttpStatus.BAD_REQUEST, "파일이 비어있습니다."),
+    IMAGE_TOO_LARGE(HttpStatus.BAD_REQUEST, "파일 크기는 5MB 이하여야 합니다."),
+    INVALID_IMAGE_TYPE(HttpStatus.BAD_REQUEST, "JPG, PNG, GIF, WEBP 이미지만 업로드할 수 있습니다."),
     OWNER_HAS_TEAM_MEMBERS(HttpStatus.BAD_REQUEST, "다른 멤버가 있는 워크스페이스의 소유자는 탈퇴할 수 없습니다. 워크스페이스를 삭제하거나 멤버를 내보낸 뒤 다시 시도해주세요."),
 
     // 400 Bad Request (이메일 인증 관련)

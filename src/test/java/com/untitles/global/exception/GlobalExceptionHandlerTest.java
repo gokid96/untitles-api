@@ -89,4 +89,21 @@ class GlobalExceptionHandlerTest {
     void unexpected() throws Exception {
         mockMvc.perform(get("/boom")).andExpect(status().isInternalServerError());
     }
+
+    @Test
+    @DisplayName("이미지 검증 실패는 400과 안내 메시지")
+    void imageValidationIs400() throws Exception {
+        var response = new GlobalExceptionHandler()
+                .handleBusinessException(new BusinessException(ErrorCode.INVALID_IMAGE_TYPE));
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody().getMessage()).contains("JPG");
+    }
+
+    @Test
+    @DisplayName("업로드 크기 제한 초과는 400")
+    void maxUploadSizeIs400() {
+        var response = new GlobalExceptionHandler()
+                .handleMaxUploadSize(new org.springframework.web.multipart.MaxUploadSizeExceededException(10));
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+    }
 }

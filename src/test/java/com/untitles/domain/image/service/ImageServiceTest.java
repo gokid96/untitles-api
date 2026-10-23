@@ -1,5 +1,7 @@
 package com.untitles.domain.image.service;
 
+import com.untitles.global.exception.BusinessException;
+import com.untitles.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,7 +58,8 @@ class ImageServiceTest {
         MockMultipartFile file = new MockMultipartFile("file", "a.svg", "image/svg+xml", svg);
 
         assertThatThrownBy(() -> imageService.uploadPostImage(file))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_IMAGE_TYPE);
         verifyNoInteractions(s3Client);
     }
 
@@ -77,5 +80,16 @@ class ImageServiceTest {
         ArgumentCaptor<DeleteObjectRequest> captor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
         verify(s3Client).deleteObject(captor.capture());
         assertThat(captor.getValue().key()).isEqualTo("profiles/7/a.png");
+    }
+
+    @Test
+    @DisplayName("5MB를 넘으면 IMAGE_TOO_LARGE")
+    void tooLarge() {
+        byte[] big = new byte[5 * 1024 * 1024 + 1];
+        System.arraycopy(PNG, 0, big, 0, PNG.length);
+        MockMultipartFile file = new MockMultipartFile("file", "a.png", "image/png", big);
+
+        assertThatThrownBy(() -> imageService.uploadPostImage(file))
+                .extracting("errorCode").isEqualTo(ErrorCode.IMAGE_TOO_LARGE);
     }
 }

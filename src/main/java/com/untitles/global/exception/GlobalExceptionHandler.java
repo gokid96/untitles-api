@@ -18,6 +18,8 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -124,6 +126,14 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 업로드 크기 제한(spring.servlet.multipart) 초과 (400)
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMaxUploadSize(MaxUploadSizeExceededException e) {
+        return createErrorResponse(HttpStatus.BAD_REQUEST, ErrorCode.IMAGE_TOO_LARGE.getMessage());
+    }
+
+    /**
      * 지원하지 않는 HTTP 메서드 (405)
      */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
@@ -145,6 +155,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
             MissingServletRequestParameterException.class,
+            MissingServletRequestPartException.class,
             MethodArgumentTypeMismatchException.class
     })
     public ResponseEntity<ApiResponse<Void>> handleBadRequest(Exception e) {

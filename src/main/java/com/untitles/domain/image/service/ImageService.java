@@ -1,5 +1,7 @@
 package com.untitles.domain.image.service;
 
+import com.untitles.global.exception.BusinessException;
+import com.untitles.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -108,15 +110,15 @@ public class ImageService {
 
     private byte[] readAndValidate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("파일이 비어있습니다.");
+            throw new BusinessException(ErrorCode.IMAGE_EMPTY);
         }
         if (file.getSize() > MAX_SIZE) {
-            throw new IllegalArgumentException("파일 크기는 5MB 이하여야 합니다.");
+            throw new BusinessException(ErrorCode.IMAGE_TOO_LARGE);
         }
         try {
             return file.getBytes();
         } catch (IOException e) {
-            throw new IllegalArgumentException("파일을 읽을 수 없습니다.");
+            throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
         }
     }
 
@@ -125,7 +127,7 @@ public class ImageService {
         if (startsWith(b, 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)) return ImageType.PNG;
         if (startsWithAscii(b, 0, "GIF87a") || startsWithAscii(b, 0, "GIF89a")) return ImageType.GIF;
         if (startsWithAscii(b, 0, "RIFF") && startsWithAscii(b, 8, "WEBP")) return ImageType.WEBP;
-        throw new IllegalArgumentException("JPG, PNG, GIF, WEBP 이미지만 업로드할 수 있습니다.");
+        throw new BusinessException(ErrorCode.INVALID_IMAGE_TYPE);
     }
 
     private static boolean startsWith(byte[] b, int... signature) {
