@@ -2,6 +2,7 @@ package com.untitles.domain.post.service;
 
 import com.untitles.domain.folder.repository.FolderRepository;
 import com.untitles.domain.post.dto.request.PostCreateRequestDTO;
+import com.untitles.domain.post.dto.request.PostUpdateRequestDTO;
 import com.untitles.domain.post.dto.response.PostResponseDTO;
 import com.untitles.domain.post.entity.Post;
 import com.untitles.domain.post.repository.PostRepository;
@@ -78,5 +79,50 @@ class PostServiceTest {
         verify(workspaceMemberHelper).checkWritePermission(member);
         verify(htmlSanitizer).sanitize(rawContent);
         verifyNoInteractions(folderRepository);
+    }
+
+    private Post existingPost(Users user, Workspace workspace, long version) {
+        Post post = Post.create("원래 제목", "<p>원래</p>", user, workspace, null);
+        ReflectionTestUtils.setField(post, "postId", 10L);
+        ReflectionTestUtils.setField(post, "version", version);
+        return post;
+    }
+
+    @Test
+    @DisplayName("편집을 시작한 버전이 최신이 아니면 덮어쓰지 않고 409")
+    void updateWithStaleVersion() {
+        Users user = Users.builder().userId(1L).loginId("tester").nickname("테스터").build();
+        Workspace workspace = Workspace.createTeam("팀", null);
+        WorkspaceMember member = WorkspaceMember.createOwner(workspace, user);
+        Post post = existingPost(user, workspace, 2L);  // 다른 사람이 저장해 버전 2
+
+        when(workspaceMemberHelper.getMemberOrThrow(1L, 1L)).thenReturn(member);
+        when(postRepository.findByPostIdAndWorkspaceWorkspaceId(10L, 1L)).thenReturn(java.util.Optional.of(post));
+
+        PostUpdateRequestDTO request = PostUpdateRequestDTO.builder().title("내 제목").content("<p>내 내용</p>").version(1L).build();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> postService.updatePost(1L, 1L, 10L, request))
+                .extracting("errorCode").isEqualTo(com.untitles.global.exception.ErrorCode.VERSION_CONFLICT);
+        assertThat(post.getTitle()).isEqualTo("원래 제목");
+        verify(postRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("최신 버전으로 편집했으면 저장된다")
+    void updateWithCurrentVersion() {
+        Users user = Users.builder().userId(1L).loginId("tester").nickname("테스터").build();
+        Workspace workspace = Workspace.createTeam("팀", null);
+        WorkspaceMember member = WorkspaceMember.createOwner(workspace, user);
+        Post post = existingPost(user, workspace, 2L);
+
+        when(workspaceMemberHelper.getMemberOrThrow(1L, 1L)).thenReturn(member);
+        when(postRepository.findByPostIdAndWorkspaceWorkspaceId(10L, 1L)).thenReturn(java.util.Optional.of(post));
+        when(htmlSanitizer.sanitize("<p>내 내용</p>")).thenReturn("<p>내 내용</p>");
+        when(postRepository.saveAndFlush(post)).thenReturn(post);
+
+        PostUpdateRequestDTO request = PostUpdateRequestDTO.builder().title("내 제목").content("<p>내 내용</p>").version(2L).build();
+        postService.updatePost(1L, 1L, 10L, request);
+
+        assertThat(post.getTitle()).isEqualTo("내 제목");
     }
 }

@@ -80,6 +80,11 @@ public class PostService {
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
 
+        // 클라이언트가 편집을 시작한 버전과 다르면 그사이 다른 사람이 저장한 것 → 덮어쓰지 않고 409
+        if (request.getVersion() != null && !request.getVersion().equals(post.getVersion())) {
+            throw new BusinessException(ErrorCode.VERSION_CONFLICT);
+        }
+
         if (request.getTitle() != null) post.updateTitle(request.getTitle());
         if (request.getContent() != null) {
             String sanitizedContent = htmlSanitizer.sanitize(request.getContent());
