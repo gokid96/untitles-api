@@ -1,6 +1,7 @@
 package com.untitles.domain.auth.service;
 
 import com.untitles.domain.auth.dto.response.LoginResponse;
+import com.untitles.domain.auth.dto.response.TokenResponse;
 import com.untitles.domain.email.service.EmailService;
 import com.untitles.domain.user.dto.request.UserCreateRequestDTO;
 import com.untitles.domain.user.dto.request.UserLoginRequestDTO;
@@ -104,6 +105,21 @@ public class AuthService {
 
         return LoginResponse.of(savedUser.getUserId(), savedUser.getLoginId(), savedUser.getNickname(),
                 accessToken, refreshToken);
+    }
+
+    /**
+     * 토큰 재발급 - 유효한 리프레시 토큰이면 액세스·리프레시 토큰을 새로 발급 (리프레시 토큰도 교체)
+     */
+    public TokenResponse refresh(String refreshToken) {
+        if (!jwtProvider.validateRefreshToken(refreshToken)) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+        Users user = userRepository.findById(jwtProvider.getUserId(refreshToken))
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));  // 탈퇴한 사용자
+
+        return new TokenResponse(
+                jwtProvider.createAccessToken(user.getUserId(), user.getLoginId()),
+                jwtProvider.createRefreshToken(user.getUserId(), user.getLoginId()));
     }
 
     /**

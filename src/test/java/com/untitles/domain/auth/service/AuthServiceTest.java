@@ -109,4 +109,40 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.signup(noEmail))
                 .extracting("errorCode").isEqualTo(ErrorCode.EMAIL_NOT_VERIFIED);
     }
+
+    @Test
+    @DisplayName("유효한 리프레시 토큰이면 새 토큰을 발급한다")
+    void refresh() {
+        Users user = Users.builder().userId(1L).loginId("tester").nickname("테스터").build();
+        when(jwtProvider.validateRefreshToken("rt")).thenReturn(true);
+        when(jwtProvider.getUserId("rt")).thenReturn(1L);
+        when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
+        when(jwtProvider.createAccessToken(1L, "tester")).thenReturn("new-at");
+        when(jwtProvider.createRefreshToken(1L, "tester")).thenReturn("new-rt");
+
+        var tokens = authService.refresh("rt");
+
+        assertThat(tokens.accessToken()).isEqualTo("new-at");
+        assertThat(tokens.refreshToken()).isEqualTo("new-rt");
+    }
+
+    @Test
+    @DisplayName("리프레시 토큰이 아니거나 만료되면 401")
+    void refreshInvalid() {
+        when(jwtProvider.validateRefreshToken("at")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.refresh("at"))
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN);
+    }
+
+    @Test
+    @DisplayName("탈퇴한 사용자의 리프레시 토큰은 거부한다")
+    void refreshDeletedUser() {
+        when(jwtProvider.validateRefreshToken("rt")).thenReturn(true);
+        when(jwtProvider.getUserId("rt")).thenReturn(9L);
+        when(userRepository.findById(9L)).thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> authService.refresh("rt"))
+                .extracting("errorCode").isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN);
+    }
 }
