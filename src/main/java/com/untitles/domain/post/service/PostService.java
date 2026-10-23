@@ -10,12 +10,12 @@ import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.workspace.entity.Workspace;
 import com.untitles.domain.workspace.entity.WorkspaceMember;
+import com.untitles.global.cache.EvictWorkspaceCaches;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.util.HtmlSanitizer;
 import com.untitles.global.util.WorkspaceMemberHelper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,7 +43,7 @@ public class PostService {
      * 게시글 생성
      */
     @Transactional
-    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
+    @EvictWorkspaceCaches
     public PostResponseDTO createPost(Long userId, Long workspaceId, PostCreateRequestDTO request) {
         WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
         workspaceMemberHelper.checkWritePermission(member);
@@ -72,7 +72,7 @@ public class PostService {
      * 게시글 수정
      */
     @Transactional
-    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
+    @EvictWorkspaceCaches
     public PostResponseDTO updatePost(Long userId, Long workspaceId, Long postId, PostUpdateRequestDTO request) {
         WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
         workspaceMemberHelper.checkWritePermission(member);
@@ -97,7 +97,7 @@ public class PostService {
      * 게시글 삭제
      */
     @Transactional
-    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
+    @EvictWorkspaceCaches
     public void deletePost(Long userId, Long workspaceId, Long postId) {
         WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
         workspaceMemberHelper.checkWritePermission(member);
@@ -112,7 +112,7 @@ public class PostService {
      * 게시글 이동 (폴더 변경)
      */
     @Transactional
-    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
+    @EvictWorkspaceCaches
     public PostResponseDTO movePost(Long userId, Long workspaceId, Long postId, Long newFolderId) {
         WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
         workspaceMemberHelper.checkWritePermission(member);

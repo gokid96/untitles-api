@@ -16,10 +16,13 @@ import com.untitles.domain.workspace.entity.WorkspaceRole;
 import com.untitles.domain.workspace.entity.WorkspaceType;
 import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
+import com.untitles.global.cache.EvictWorkspaceCaches;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.util.WorkspaceMemberHelper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,6 +83,7 @@ public class WorkspaceService {
 
     // 워크스페이스 수정 (OWNER, ADMIN만)
     @Transactional
+    @EvictWorkspaceCaches
     public WorkspaceResponse updateWorkspace(Long userId, Long workspaceId, WorkspaceUpdateRequest request) {
         WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
         workspaceMemberHelper.checkPermission(member, WorkspaceRole.ADMIN);
@@ -94,6 +98,7 @@ public class WorkspaceService {
 
     // 워크스페이스 삭제 (OWNER만)
     @Transactional
+    @EvictWorkspaceCaches
     public void deleteWorkspace(Long userId, Long workspaceId) {
         WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
         workspaceMemberHelper.checkPermission(member, WorkspaceRole.OWNER);
@@ -111,6 +116,10 @@ public class WorkspaceService {
      * post → folder(parent null) → folder → member → workspace
      */
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "workspaceTree", key = "#workspace.workspaceId"),
+            @CacheEvict(value = {"publicWorkspace", "publicPost"}, allEntries = true)
+    })
     public void deleteWorkspaceData(Workspace workspace) {
         Long workspaceId = workspace.getWorkspaceId();
         postRepository.deleteByWorkspaceWorkspaceId(workspaceId);

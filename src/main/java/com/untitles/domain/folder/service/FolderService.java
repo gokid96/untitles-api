@@ -9,11 +9,11 @@ import com.untitles.domain.folder.repository.FolderRepository;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.workspace.entity.Workspace;
 import com.untitles.domain.workspace.entity.WorkspaceMember;
+import com.untitles.global.cache.EvictWorkspaceCaches;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.util.WorkspaceMemberHelper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +32,7 @@ public class FolderService {
      * 폴더 생성
      */
     @Transactional
-    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
+    @EvictWorkspaceCaches
     public FolderResponseDTO createFolder(Long userId, Long workspaceId, FolderCreateRequestDTO request) {
         WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
         workspaceMemberHelper.checkWritePermission(member);
@@ -60,7 +60,7 @@ public class FolderService {
      * 폴더 수정
      */
     @Transactional
-    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
+    @EvictWorkspaceCaches
     public FolderResponseDTO updateFolder(Long userId, Long workspaceId, Long folderId, FolderUpdateRequestDTO request) {
         WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
         workspaceMemberHelper.checkWritePermission(member);
@@ -77,7 +77,7 @@ public class FolderService {
      * 폴더 삭제
      */
     @Transactional
-    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
+    @EvictWorkspaceCaches
     public void deleteFolder(Long userId, Long workspaceId, Long folderId) {
         WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
         workspaceMemberHelper.checkWritePermission(member);
@@ -92,7 +92,7 @@ public class FolderService {
      * 폴더 이동
      */
     @Transactional
-    @CacheEvict(value = "workspaceTree", key = "#workspaceId")
+    @EvictWorkspaceCaches
     public FolderResponseDTO moveFolder(Long userId, Long workspaceId, Long folderId, Long newParentId) {
         WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
         workspaceMemberHelper.checkWritePermission(member);
