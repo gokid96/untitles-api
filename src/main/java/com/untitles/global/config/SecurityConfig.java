@@ -58,7 +58,10 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "https://untitles.net",
                 "https://www.untitles.net",
-                "https://untitles-web.vercel.app"
+                "https://untitles-web.vercel.app",
+                // 스토어 앱(Capacitor) 웹뷰 출처: 안드로이드 https://localhost, iOS capacitor://localhost
+                "https://localhost",
+                "capacitor://localhost"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
