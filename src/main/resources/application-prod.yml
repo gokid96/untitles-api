@@ -12,11 +12,6 @@ spring:
     hibernate:
       ddl-auto: update
 
-logging:
-  level:
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
-
 app:
   public-base-url: https://untitles.net
   oauth2:
