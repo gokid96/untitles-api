@@ -29,4 +29,29 @@ class JwtProviderTest {
         assertThat(jwtProvider.validateRefreshToken(token)).isTrue();
         assertThat(jwtProvider.validateAccessToken(token)).isFalse();
     }
+
+    @Test
+    @DisplayName("다른 키로 서명했거나 형식이 틀린 토큰은 예외 없이 거부한다")
+    void invalidTokensRejectedWithoutException() {
+        JwtProvider other = new JwtProvider("ffffffffffffffffffffffffffffffffffffffffffffffff", 60_000, 600_000);
+        String foreign = other.createAccessToken(1L, "tester");
+
+        assertThat(jwtProvider.validateAccessToken(foreign)).isFalse();
+        assertThat(jwtProvider.validateAccessToken("not-a-jwt")).isFalse();
+        assertThat(jwtProvider.validateAccessToken("")).isFalse();
+    }
+
+    @Test
+    @DisplayName("필터는 잘못된 토큰이 와도 인증 없이 다음으로 넘긴다 (500이 아니라 401로 이어짐)")
+    void filterPassesThroughInvalidToken() throws Exception {
+        JwtProvider other = new JwtProvider("ffffffffffffffffffffffffffffffffffffffffffffffff", 60_000, 600_000);
+        var request = new org.springframework.mock.web.MockHttpServletRequest("GET", "/api/v1/users/me");
+        request.addHeader("Authorization", "Bearer " + other.createAccessToken(1L, "tester"));
+        var chain = new org.springframework.mock.web.MockFilterChain();
+
+        new JwtFilter(jwtProvider).doFilter(request, new org.springframework.mock.web.MockHttpServletResponse(), chain);
+
+        assertThat(chain.getRequest()).isNotNull();
+        assertThat(org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
 }

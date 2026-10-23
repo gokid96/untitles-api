@@ -98,13 +98,11 @@ public class JwtProvider {
             }
             return true;
         } catch (ExpiredJwtException e) {
-            log.warn("만료된 JWT 토큰: {}", e.getMessage());
-        } catch (MalformedJwtException e) {
-            log.warn("잘못된 JWT 토큰: {}", e.getMessage());
-        } catch (UnsupportedJwtException e) {
-            log.warn("지원하지 않는 JWT 토큰: {}", e.getMessage());
-        } catch (IllegalArgumentException e) {
-            log.warn("JWT 토큰이 비어있음: {}", e.getMessage());
+            log.debug("만료된 JWT 토큰: {}", e.getMessage());
+        } catch (JwtException | IllegalArgumentException e) {
+            // 서명 불일치(SignatureException), 형식 오류 등 모든 JWT 오류를 401로 처리
+            // (이전에는 서명 오류가 잡히지 않아 필터 밖으로 던져져 500이 났음)
+            log.warn("유효하지 않은 JWT 토큰: {} - {}", e.getClass().getSimpleName(), e.getMessage());
         }
         return false;
     }
