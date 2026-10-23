@@ -34,6 +34,10 @@ class PostServiceTest {
     private HtmlSanitizer htmlSanitizer;
     @Mock
     private WorkspaceMemberHelper workspaceMemberHelper;
+    @Mock
+    private com.untitles.domain.link.service.PostLinkService postLinkService;
+    @Mock
+    private com.untitles.domain.link.repository.PostLinkRepository postLinkRepository;
 
     @InjectMocks
     private PostService postService;

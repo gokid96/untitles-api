@@ -56,6 +56,9 @@ class WorkspaceServiceTest {
     @Mock
     private FolderRepository folderRepository;
 
+    @Mock
+    private com.untitles.domain.link.repository.PostLinkRepository postLinkRepository;
+
     private WorkspaceService workspaceService;
 
     private Users testUser;
@@ -73,7 +76,8 @@ class WorkspaceServiceTest {
                 userRepository,
                 postRepository,
                 folderRepository,
-                new WorkspaceMemberHelper(memberRepository)
+                new WorkspaceMemberHelper(memberRepository),
+                postLinkRepository
         );
 
         // 테스트 유저 생성

@@ -31,6 +31,8 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     long countByWorkspace(Workspace workspace);
 
+    List<Post> findAllByWorkspaceWorkspaceId(Long workspaceId);
+
     // 회원 탈퇴 시 다른 워크스페이스에 남긴 글의 작성자 정보를 비운다
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE Post p SET p.author = null WHERE p.author.userId = :userId")

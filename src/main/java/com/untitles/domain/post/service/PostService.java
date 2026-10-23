@@ -2,6 +2,8 @@ package com.untitles.domain.post.service;
 
 import com.untitles.domain.folder.entity.Folder;
 import com.untitles.domain.folder.repository.FolderRepository;
+import com.untitles.domain.link.repository.PostLinkRepository;
+import com.untitles.domain.link.service.PostLinkService;
 import com.untitles.domain.post.dto.request.PostCreateRequestDTO;
 import com.untitles.domain.post.dto.request.PostUpdateRequestDTO;
 import com.untitles.domain.post.dto.response.PostResponseDTO;
@@ -28,6 +30,8 @@ public class PostService {
     private final FolderRepository folderRepository;
     private final HtmlSanitizer htmlSanitizer;
     private final WorkspaceMemberHelper workspaceMemberHelper;
+    private final PostLinkService postLinkService;
+    private final PostLinkRepository postLinkRepository;
 
     /**
      * 게시글 상세 조회
@@ -65,6 +69,7 @@ public class PostService {
         String sanitizedContent = htmlSanitizer.sanitize(request.getContent());
         Post post = Post.create(request.getTitle(), sanitizedContent, user, workspace, folder);
         Post savedPost = postRepository.save(post);
+        postLinkService.syncLinks(savedPost);
         return PostResponseDTO.from(savedPost);
     }
 
@@ -89,6 +94,7 @@ public class PostService {
         if (request.getContent() != null) {
             String sanitizedContent = htmlSanitizer.sanitize(request.getContent());
             post.updateContent(sanitizedContent);
+            postLinkService.syncLinks(post);
         }
         return PostResponseDTO.from(postRepository.saveAndFlush(post));
     }
@@ -105,6 +111,7 @@ public class PostService {
         Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
 
+        postLinkRepository.deleteAllByPostId(post.getPostId());
         postRepository.delete(post);
     }
 

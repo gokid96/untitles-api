@@ -82,6 +82,11 @@
                 <regexp value="[a-zA-Z0-9\-_]+"/>
             </regexp-list>
         </attribute>
+        <attribute name="data-note-id">
+            <regexp-list>
+                <regexp value="[0-9]{1,19}"/>
+            </regexp-list>
+        </attribute>
         <attribute name="data-checked">
             <literal-list>
                 <literal value="true"/>
@@ -153,6 +158,8 @@
             <attribute name="href"/>
             <attribute name="target"/>
             <attribute name="rel"/>
+            <!-- 노트 링크: <a class="note-link" data-note-id="12"> -->
+            <attribute name="data-note-id"/>
         </tag>
         
         <!-- 이미지 -->

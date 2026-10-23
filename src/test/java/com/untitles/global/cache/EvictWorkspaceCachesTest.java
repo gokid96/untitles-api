@@ -43,6 +43,8 @@ class EvictWorkspaceCachesTest {
     @MockitoBean FolderRepository folderRepository;
     @MockitoBean HtmlSanitizer htmlSanitizer;
     @MockitoBean WorkspaceMemberHelper workspaceMemberHelper;
+    @MockitoBean com.untitles.domain.link.service.PostLinkService postLinkService;
+    @MockitoBean com.untitles.domain.link.repository.PostLinkRepository postLinkRepository;
 
     @Autowired PostService postService;
     @Autowired CacheManager cacheManager;

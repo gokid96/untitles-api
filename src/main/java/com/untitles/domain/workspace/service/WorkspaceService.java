@@ -1,6 +1,7 @@
 package com.untitles.domain.workspace.service;
 
 import com.untitles.domain.folder.repository.FolderRepository;
+import com.untitles.domain.link.repository.PostLinkRepository;
 import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.user.repository.UserRepository;
@@ -39,6 +40,7 @@ public class WorkspaceService {
     private final PostRepository postRepository;
     private final FolderRepository folderRepository;
     private final WorkspaceMemberHelper workspaceMemberHelper;
+    private final PostLinkRepository postLinkRepository;
 
     // 워크스페이스 생성
     @Transactional
@@ -122,6 +124,7 @@ public class WorkspaceService {
     })
     public void deleteWorkspaceData(Workspace workspace) {
         Long workspaceId = workspace.getWorkspaceId();
+        postLinkRepository.deleteAllByWorkspaceId(workspaceId);
         postRepository.deleteByWorkspaceWorkspaceId(workspaceId);
         folderRepository.clearParentByWorkspaceId(workspaceId);
         folderRepository.deleteAllByWorkspaceId(workspaceId);
