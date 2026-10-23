@@ -14,6 +14,11 @@ import java.util.Date;
 @Component
 public class JwtProvider {
 
+    // 토큰 종류 클레임: 리프레시 토큰을 액세스 토큰처럼 쓰지 못하게 구분한다
+    private static final String TYPE_CLAIM = "type";
+    private static final String ACCESS_TYPE = "access";
+    private static final String REFRESH_TYPE = "refresh";
+
     private final SecretKey secretKey;
     private final long accessTokenExpiration;
     private final long refreshTokenExpiration;
@@ -32,23 +37,24 @@ public class JwtProvider {
      * Access Token 생성
      */
     public String createAccessToken(Long userId, String loginId) {
-        return createToken(userId, loginId, accessTokenExpiration);
+        return createToken(userId, loginId, accessTokenExpiration, ACCESS_TYPE);
     }
 
     /**
      * Refresh Token 생성
      */
     public String createRefreshToken(Long userId, String loginId) {
-        return createToken(userId, loginId, refreshTokenExpiration);
+        return createToken(userId, loginId, refreshTokenExpiration, REFRESH_TYPE);
     }
 
-    private String createToken(Long userId, String loginId, long expiration) {
+    private String createToken(Long userId, String loginId, long expiration, String type) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim("loginId", loginId)
+                .claim(TYPE_CLAIM, type)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(secretKey)
@@ -70,11 +76,26 @@ public class JwtProvider {
     }
 
     /**
-     * 토큰 유효성 검증
+     * 액세스 토큰 검증 (API 인증용)
      */
-    public boolean validateToken(String token) {
+    public boolean validateAccessToken(String token) {
+        return validateToken(token, ACCESS_TYPE);
+    }
+
+    /**
+     * 리프레시 토큰 검증 (토큰 재발급용)
+     */
+    public boolean validateRefreshToken(String token) {
+        return validateToken(token, REFRESH_TYPE);
+    }
+
+    private boolean validateToken(String token, String expectedType) {
         try {
-            getClaims(token);
+            Claims claims = getClaims(token);
+            if (!expectedType.equals(claims.get(TYPE_CLAIM, String.class))) {
+                log.warn("토큰 종류 불일치: expected={}", expectedType);
+                return false;
+            }
             return true;
         } catch (ExpiredJwtException e) {
             log.warn("만료된 JWT 토큰: {}", e.getMessage());
