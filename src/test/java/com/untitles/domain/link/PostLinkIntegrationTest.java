@@ -27,12 +27,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @H2JpaTest
-@Import({PostService.class, PostLinkService.class, HtmlSanitizer.class, WorkspaceMemberHelper.class})
+@Import({PostService.class, PostLinkService.class, HtmlSanitizer.class, WorkspaceMemberHelper.class,
+        com.untitles.domain.trash.service.TrashService.class})
 class PostLinkIntegrationTest {
 
     @Autowired PostService postService;
     @Autowired PostLinkService postLinkService;
     @Autowired PostLinkRepository postLinkRepository;
+    @Autowired com.untitles.domain.trash.service.TrashService trashService;
     @Autowired UserRepository userRepository;
     @Autowired WorkspaceRepository workspaceRepository;
     @Autowired WorkspaceMemberRepository memberRepository;
@@ -94,12 +96,16 @@ class PostLinkIntegrationTest {
     }
 
     @Test
-    @DisplayName("링크된 글을 삭제하면 들어오는 링크도 정리된다")
+    @DisplayName("링크된 글을 휴지통에 넣으면 그래프에서 빠지고, 영구 삭제하면 링크도 정리된다")
     void deletingTargetCleansLinks() {
         Long b = create(ws1, "B", "<p>b</p>");
         create(ws1, "A", "<p>" + link(b, "B") + "</p>");
 
         postService.deletePost(userId, ws1, b);
+        assertThat(postLinkService.getGraph(userId, ws1).links()).isEmpty();
+        assertThat(postLinkRepository.findAllByWorkspaceId(ws1)).hasSize(1);  // 복구 대비 보관
+
+        trashService.deletePostPermanently(userId, ws1, b);
         em.flush();
 
         assertThat(postLinkRepository.findAllByWorkspaceId(ws1)).isEmpty();

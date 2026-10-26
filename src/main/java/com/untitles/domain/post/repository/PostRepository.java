@@ -20,10 +20,53 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT p FROM Post p LEFT JOIN FETCH p.author WHERE p.postId = :postId AND p.workspace.workspaceId = :workspaceId")
     Optional<Post> findWithAuthorByPostIdAndWorkspaceWorkspaceId(@Param("postId") Long postId, @Param("workspaceId") Long workspaceId);
 
-    //삭제시 벌크 연산
-    @Modifying
-    @Query("DELETE FROM Post p WHERE p.workspace.workspaceId = :workspaceId")
+    // 워크스페이스 삭제 시 벌크 연산 (휴지통에 있는 글까지 모두 삭제하려고 네이티브 쿼리 사용)
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "DELETE FROM post WHERE workspace_id = :workspaceId", nativeQuery = true)
     void deleteByWorkspaceWorkspaceId(@Param("workspaceId") Long workspaceId);
+
+    // ===== 휴지통 (삭제된 글은 엔티티 조회에서 제외되므로 네이티브 쿼리로 다룬다) =====
+
+    interface TrashedPostRow {
+        Long getPostId();
+        String getTitle();
+        Long getFolderId();
+        java.time.LocalDateTime getDeletedAt();
+    }
+
+    @Query(value = "SELECT post_id AS postId, title, folder_id AS folderId, deleted_at AS deletedAt "
+            + "FROM post WHERE workspace_id = :workspaceId AND deleted_at IS NOT NULL", nativeQuery = true)
+    List<TrashedPostRow> findTrashedByWorkspace(@Param("workspaceId") Long workspaceId);
+
+    @Query(value = "SELECT post_id AS postId, title, folder_id AS folderId, deleted_at AS deletedAt "
+            + "FROM post WHERE post_id = :postId AND workspace_id = :workspaceId AND deleted_at IS NOT NULL", nativeQuery = true)
+    Optional<TrashedPostRow> findTrashedById(@Param("postId") Long postId, @Param("workspaceId") Long workspaceId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE post SET deleted_at = :deletedAt WHERE post_id = :postId AND deleted_at IS NULL", nativeQuery = true)
+    int softDelete(@Param("postId") Long postId, @Param("deletedAt") java.time.LocalDateTime deletedAt);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE post SET deleted_at = :deletedAt WHERE folder_id IN (:folderIds) AND deleted_at IS NULL", nativeQuery = true)
+    int softDeleteByFolderIds(@Param("folderIds") java.util.Collection<Long> folderIds, @Param("deletedAt") java.time.LocalDateTime deletedAt);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE post SET deleted_at = NULL, folder_id = :folderId WHERE post_id = :postId", nativeQuery = true)
+    int restore(@Param("postId") Long postId, @Param("folderId") Long folderId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE post SET deleted_at = NULL WHERE folder_id IN (:folderIds) AND deleted_at = :deletedAt", nativeQuery = true)
+    int restoreByFolderIds(@Param("folderIds") java.util.Collection<Long> folderIds, @Param("deletedAt") java.time.LocalDateTime deletedAt);
+
+    @Query(value = "SELECT post_id FROM post WHERE folder_id IN (:folderIds)", nativeQuery = true)
+    List<Long> findAllIdsByFolderIds(@Param("folderIds") java.util.Collection<Long> folderIds);
+
+    @Query(value = "SELECT post_id FROM post WHERE deleted_at IS NOT NULL AND deleted_at < :before", nativeQuery = true)
+    List<Long> findIdsTrashedBefore(@Param("before") java.time.LocalDateTime before);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "DELETE FROM post WHERE post_id IN (:postIds)", nativeQuery = true)
+    int hardDeleteByIds(@Param("postIds") java.util.Collection<Long> postIds);
 
 
     // 워크스페이스 + 게시글 ID로 조회

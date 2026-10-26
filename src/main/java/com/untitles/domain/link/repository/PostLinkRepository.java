@@ -21,6 +21,11 @@ public interface PostLinkRepository extends JpaRepository<PostLink, Long> {
     @Query("DELETE FROM PostLink l WHERE l.sourcePostId = :postId OR l.targetPostId = :postId")
     void deleteAllByPostId(@Param("postId") Long postId);
 
+    // 영구 삭제되는 글들의 링크 정리
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM PostLink l WHERE l.sourcePostId IN :postIds OR l.targetPostId IN :postIds")
+    void deleteAllByPostIds(@Param("postIds") java.util.Collection<Long> postIds);
+
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM PostLink l WHERE l.workspaceId = :workspaceId")
     void deleteAllByWorkspaceId(@Param("workspaceId") Long workspaceId);

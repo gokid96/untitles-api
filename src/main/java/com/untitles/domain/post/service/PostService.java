@@ -108,11 +108,11 @@ public class PostService {
         WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
         workspaceMemberHelper.checkWritePermission(member);
 
-        Post post = postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
+        postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
 
-        postLinkRepository.deleteAllByPostId(post.getPostId());
-        postRepository.delete(post);
+        // 바로 지우지 않고 휴지통으로 이동 (링크는 복구할 때를 위해 남겨 두고, 그래프에서는 걸러진다)
+        postRepository.softDelete(postId, java.time.LocalDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
     }
 
     /**

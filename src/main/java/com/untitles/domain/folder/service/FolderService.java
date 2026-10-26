@@ -6,6 +6,7 @@ import com.untitles.domain.folder.dto.response.FolderResponseDTO;
 import com.untitles.domain.folder.dto.response.WorkspaceTreeResponseDTO;
 import com.untitles.domain.folder.entity.Folder;
 import com.untitles.domain.folder.repository.FolderRepository;
+import com.untitles.domain.trash.service.TrashService;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.workspace.entity.Workspace;
 import com.untitles.domain.workspace.entity.WorkspaceMember;
@@ -27,6 +28,7 @@ public class FolderService {
     private final FolderRepository folderRepository;
     private final WorkspaceMemberHelper workspaceMemberHelper;
     private final WorkspaceTreeReader workspaceTreeReader;
+    private final TrashService trashService;
 
     /**
      * 폴더 생성
@@ -79,13 +81,8 @@ public class FolderService {
     @Transactional
     @EvictWorkspaceCaches
     public void deleteFolder(Long userId, Long workspaceId, Long folderId) {
-        WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
-        workspaceMemberHelper.checkWritePermission(member);
-
-        Folder folder = folderRepository.findByFolderIdAndWorkspaceWorkspaceId(folderId, workspaceId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.FOLDER_NOT_FOUND));
-
-        folderRepository.delete(folder);
+        // 바로 지우지 않고 하위 폴더·글과 함께 휴지통으로 이동
+        trashService.trashFolder(userId, workspaceId, folderId);
     }
 
     /**
