@@ -12,4 +12,13 @@ public interface EmailVerificationRepository extends JpaRepository<EmailVerifica
     
     @Modifying
     void deleteByEmail(String email);
+
+    /**
+     * 시도 횟수를 원자적으로 1 올린다. 횟수를 다 썼으면 0을 돌려준다.
+     */
+    @Modifying(flushAutomatically = true)
+    @org.springframework.data.jpa.repository.Query("UPDATE EmailVerification v SET v.attemptCount = v.attemptCount + 1 " +
+            "WHERE v.id = :id AND v.attemptCount < :maxAttempts")
+    int useAttempt(@org.springframework.data.repository.query.Param("id") Long id,
+                   @org.springframework.data.repository.query.Param("maxAttempts") int maxAttempts);
 }

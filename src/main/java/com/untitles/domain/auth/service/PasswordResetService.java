@@ -55,12 +55,14 @@ public class PasswordResetService {
     public void confirm(String email, String code, String newPassword) {
         Users user = userRepository.findByEmail(email.trim())
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSWORD_RESET_INVALID));
+        // 비교 전에 시도 횟수부터 원자적으로 차감한다 (동시 입력으로 횟수 제한을 넘지 못하게)
+        if (passwordResetRepository.useAttempt(user.getUserId(), PasswordReset.MAX_ATTEMPTS, LocalDateTime.now()) == 0) {
+            throw new BusinessException(ErrorCode.PASSWORD_RESET_INVALID);
+        }
         PasswordReset reset = passwordResetRepository.findByUserId(user.getUserId())
-                .filter(r -> r.isUsable(LocalDateTime.now()))
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSWORD_RESET_INVALID));
 
         if (!reset.getCodeHash().equals(RefreshTokenService.hash(code))) {
-            reset.increaseAttempt();
             throw new BusinessException(ErrorCode.VERIFICATION_CODE_MISMATCH);
         }
 

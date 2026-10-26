@@ -80,6 +80,7 @@ class EmailServiceTest {
     void attemptLimit() {
         EmailVerification verification = EmailVerification.create(EMAIL, "123456", 10);
         when(verificationRepository.findByEmailAndVerifiedFalse(EMAIL)).thenReturn(Optional.of(verification));
+        stubAttemptCounter(verification);
 
         for (int i = 0; i < EmailVerification.MAX_ATTEMPTS; i++) {
             assertThatThrownBy(() -> emailService.verifyCode(EMAIL, "000000"))
@@ -97,6 +98,7 @@ class EmailServiceTest {
     void verifyAfterMistake() {
         EmailVerification verification = EmailVerification.create(EMAIL, "123456", 10);
         when(verificationRepository.findByEmailAndVerifiedFalse(EMAIL)).thenReturn(Optional.of(verification));
+        stubAttemptCounter(verification);
 
         assertThatThrownBy(() -> emailService.verifyCode(EMAIL, "000000"))
                 .isInstanceOf(BusinessException.class);
@@ -112,5 +114,16 @@ class EmailServiceTest {
         Transactional tx = method.getAnnotation(Transactional.class);
 
         assertThat(tx.noRollbackFor()).contains(BusinessException.class);
+    }
+
+    /** DB의 원자적 증가(useAttempt)를 엔티티 카운터로 흉내 낸다 */
+    private void stubAttemptCounter(EmailVerification verification) {
+        when(verificationRepository.useAttempt(any(), anyInt())).thenAnswer(inv -> {
+            if (verification.getAttemptCount() >= EmailVerification.MAX_ATTEMPTS) {
+                return 0;
+            }
+            verification.increaseAttempt();
+            return 1;
+        });
     }
 }

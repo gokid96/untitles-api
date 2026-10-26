@@ -78,9 +78,13 @@ public class EmailService {
             throw new BusinessException(ErrorCode.VERIFICATION_ATTEMPTS_EXCEEDED);
         }
 
+        // 비교 전에 시도 횟수부터 원자적으로 차감한다 (동시 입력으로 횟수 제한을 넘지 못하게)
+        if (verificationRepository.useAttempt(verification.getId(), EmailVerification.MAX_ATTEMPTS) == 0) {
+            throw new BusinessException(ErrorCode.VERIFICATION_ATTEMPTS_EXCEEDED);
+        }
+
         // 코드 일치 확인
         if (!verification.getCode().equals(code)) {
-            verification.increaseAttempt();
             throw new BusinessException(ErrorCode.VERIFICATION_CODE_MISMATCH);
         }
 
