@@ -8,7 +8,6 @@ import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
-import com.untitles.global.jwt.JwtProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,10 +30,16 @@ class AuthServiceTest {
     @Mock private EmailService emailService;
     @Mock private WorkspaceRepository workspaceRepository;
     @Mock private WorkspaceMemberRepository workspaceMemberRepository;
-    @Mock private JwtProvider jwtProvider;
+    @Mock private RefreshTokenService refreshTokenService;
 
     @InjectMocks
     private AuthService authService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubTokens() {
+        lenient().when(refreshTokenService.issue(any(), any()))
+                .thenReturn(new com.untitles.domain.auth.dto.response.TokenResponse("at", "rt"));
+    }
 
     private final UserCreateRequestDTO request = UserCreateRequestDTO.builder()
             .email("user@example.com").loginId("tester").password("abcd1234!").nickname("테스터")
@@ -111,14 +116,13 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("유효한 리프레시 토큰이면 새 토큰을 발급한다")
+    @DisplayName("저장된 리프레시 토큰이면 새 토큰을 발급한다")
     void refresh() {
         Users user = Users.builder().userId(1L).loginId("tester").nickname("테스터").build();
-        when(jwtProvider.validateRefreshToken("rt")).thenReturn(true);
-        when(jwtProvider.getUserId("rt")).thenReturn(1L);
+        when(refreshTokenService.consume("rt")).thenReturn(1L);
         when(userRepository.findById(1L)).thenReturn(java.util.Optional.of(user));
-        when(jwtProvider.createAccessToken(1L, "tester")).thenReturn("new-at");
-        when(jwtProvider.createRefreshToken(1L, "tester")).thenReturn("new-rt");
+        when(refreshTokenService.issue(1L, "tester"))
+                .thenReturn(new com.untitles.domain.auth.dto.response.TokenResponse("new-at", "new-rt"));
 
         var tokens = authService.refresh("rt");
 
@@ -127,9 +131,9 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("리프레시 토큰이 아니거나 만료되면 401")
+    @DisplayName("무효화됐거나 만료된 리프레시 토큰이면 401")
     void refreshInvalid() {
-        when(jwtProvider.validateRefreshToken("at")).thenReturn(false);
+        when(refreshTokenService.consume("at")).thenThrow(new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));
 
         assertThatThrownBy(() -> authService.refresh("at"))
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN);
@@ -138,8 +142,7 @@ class AuthServiceTest {
     @Test
     @DisplayName("탈퇴한 사용자의 리프레시 토큰은 거부한다")
     void refreshDeletedUser() {
-        when(jwtProvider.validateRefreshToken("rt")).thenReturn(true);
-        when(jwtProvider.getUserId("rt")).thenReturn(9L);
+        when(refreshTokenService.consume("rt")).thenReturn(9L);
         when(userRepository.findById(9L)).thenReturn(java.util.Optional.empty());
 
         assertThatThrownBy(() -> authService.refresh("rt"))

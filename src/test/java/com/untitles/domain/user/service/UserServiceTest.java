@@ -28,6 +28,7 @@ class UserServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private ImageService imageService;
+    @Mock private com.untitles.domain.auth.service.RefreshTokenService refreshTokenService;
 
     @InjectMocks
     private UserService userService;

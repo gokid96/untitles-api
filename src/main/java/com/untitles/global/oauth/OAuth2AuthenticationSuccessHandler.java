@@ -1,6 +1,5 @@
 package com.untitles.global.oauth;
 
-import com.untitles.global.jwt.JwtProvider;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,7 +20,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     @Value("${app.oauth2.redirect-uri:http://localhost:5173}")
     private String redirectUri;
 
-    private final JwtProvider jwtProvider;
+    private final com.untitles.domain.auth.service.RefreshTokenService refreshTokenService;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -29,8 +28,9 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
 
-        String accessToken = jwtProvider.createAccessToken(oAuth2User.getUserId(), oAuth2User.getName());
-        String refreshToken = jwtProvider.createRefreshToken(oAuth2User.getUserId(), oAuth2User.getName());
+        var tokens = refreshTokenService.issue(oAuth2User.getUserId(), oAuth2User.getName());
+        String accessToken = tokens.accessToken();
+        String refreshToken = tokens.refreshToken();
 
         log.info("OAuth2 로그인 성공: {} (ID: {})", oAuth2User.getName(), oAuth2User.getUserId());
 

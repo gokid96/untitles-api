@@ -42,6 +42,7 @@ public class UserService {
     private final PostRepository postRepository;
     private final FolderRepository folderRepository;
     private final EmailVerificationRepository emailVerificationRepository;
+    private final com.untitles.domain.auth.service.RefreshTokenService refreshTokenService;
 
     private static final int SEARCH_MIN_LENGTH = 2;
     private static final int SEARCH_LIMIT = 10;
@@ -90,6 +91,8 @@ public class UserService {
                 throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
             }
             user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
+            // 다른 기기를 포함한 모든 로그인 무효화 (다시 로그인해야 함)
+            refreshTokenService.revokeAll(user.getUserId());
         }
 
         userRepository.save(user);
@@ -130,6 +133,7 @@ public class UserService {
             emailVerificationRepository.deleteByEmail(user.getEmail());
         }
         deleteProfileImageQuietly(user.getProfileImage(), userId);
+        refreshTokenService.revokeAll(userId);
         userRepository.delete(user);
     }
 

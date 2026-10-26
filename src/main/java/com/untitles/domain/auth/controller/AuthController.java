@@ -49,8 +49,9 @@ public class AuthController {
      * 로그아웃 - 클라이언트에서 토큰 삭제
      */
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout() {
-        authService.logout();
+    public ResponseEntity<Map<String, String>> logout(
+            @RequestBody(required = false) com.untitles.domain.auth.dto.request.LogoutRequest request) {
+        authService.logout(request != null ? request.refreshToken() : null);
         return ResponseEntity.ok(Map.of("message", "로그아웃 되었습니다."));
     }
 }

@@ -33,6 +33,7 @@ class UserDeletionTest {
 
     @MockitoBean ImageService imageService;
     @MockitoBean PasswordEncoder passwordEncoder;
+    @MockitoBean com.untitles.domain.auth.service.RefreshTokenService refreshTokenService;
 
     @Autowired UserService userService;
     @Autowired UserRepository userRepository;

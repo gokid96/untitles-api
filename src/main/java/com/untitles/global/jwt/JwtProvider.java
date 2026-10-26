@@ -47,6 +47,10 @@ public class JwtProvider {
         return createToken(userId, loginId, refreshTokenExpiration, REFRESH_TYPE);
     }
 
+    public long getRefreshTokenExpiration() {
+        return refreshTokenExpiration;
+    }
+
     private String createToken(Long userId, String loginId, long expiration, String type) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
@@ -55,6 +59,7 @@ public class JwtProvider {
                 .subject(String.valueOf(userId))
                 .claim("loginId", loginId)
                 .claim(TYPE_CLAIM, type)
+                .id(java.util.UUID.randomUUID().toString())  // 같은 시각에 발급해도 토큰이 겹치지 않도록
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(secretKey)

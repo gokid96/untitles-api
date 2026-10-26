@@ -13,7 +13,6 @@ import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
 import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
-import com.untitles.global.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,7 +33,7 @@ public class AuthService {
     private final EmailService emailService;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
-    private final JwtProvider jwtProvider;
+    private final RefreshTokenService refreshTokenService;
 
     @Value("${app.signup.email-verification-required:true}")
     private boolean emailVerificationRequired;
@@ -50,13 +49,12 @@ public class AuthService {
             throw new BadCredentialsException("비밀번호가 일치하지 않습니다.");
         }
 
-        String accessToken = jwtProvider.createAccessToken(user.getUserId(), user.getLoginId());
-        String refreshToken = jwtProvider.createRefreshToken(user.getUserId(), user.getLoginId());
+        TokenResponse tokens = refreshTokenService.issue(user.getUserId(), user.getLoginId());
 
         log.info("로그인 성공: {}", user.getLoginId());
 
         return LoginResponse.of(user.getUserId(), user.getLoginId(), user.getNickname(),
-                accessToken, refreshToken);
+                tokens.accessToken(), tokens.refreshToken());
     }
 
     /**
@@ -98,35 +96,30 @@ public class AuthService {
             emailService.deleteVerification(email);
         }
 
-        String accessToken = jwtProvider.createAccessToken(savedUser.getUserId(), savedUser.getLoginId());
-        String refreshToken = jwtProvider.createRefreshToken(savedUser.getUserId(), savedUser.getLoginId());
+        TokenResponse tokens = refreshTokenService.issue(savedUser.getUserId(), savedUser.getLoginId());
 
         log.info("회원가입 성공: {}", savedUser.getLoginId());
 
         return LoginResponse.of(savedUser.getUserId(), savedUser.getLoginId(), savedUser.getNickname(),
-                accessToken, refreshToken);
+                tokens.accessToken(), tokens.refreshToken());
     }
 
     /**
-     * 토큰 재발급 - 유효한 리프레시 토큰이면 액세스·리프레시 토큰을 새로 발급 (리프레시 토큰도 교체)
+     * 토큰 재발급 - 저장된 유효한 리프레시 토큰이면 액세스·리프레시 토큰을 새로 발급 (쓴 리프레시 토큰은 폐기)
      */
+    @Transactional
     public TokenResponse refresh(String refreshToken) {
-        if (!jwtProvider.validateRefreshToken(refreshToken)) {
-            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
-        }
-        Users user = userRepository.findById(jwtProvider.getUserId(refreshToken))
+        Long userId = refreshTokenService.consume(refreshToken);
+        Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN));  // 탈퇴한 사용자
 
-        return new TokenResponse(
-                jwtProvider.createAccessToken(user.getUserId(), user.getLoginId()),
-                jwtProvider.createRefreshToken(user.getUserId(), user.getLoginId()));
+        return refreshTokenService.issue(user.getUserId(), user.getLoginId());
     }
 
     /**
-     * 로그아웃 - JWT는 클라이언트에서 토큰 삭제로 처리
-     * 서버에서는 별도 처리 없음
+     * 로그아웃 - 이 기기의 리프레시 토큰을 무효화 (액세스 토큰은 클라이언트에서 삭제, 최대 30분 후 만료)
      */
-    public void logout() {
-        log.info("로그아웃");
+    public void logout(String refreshToken) {
+        refreshTokenService.revoke(refreshToken);
     }
 }
