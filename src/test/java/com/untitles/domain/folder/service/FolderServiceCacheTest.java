@@ -37,6 +37,7 @@ class FolderServiceCacheTest {
 
     @MockitoBean FolderRepository folderRepository;
     @MockitoBean PostRepository postRepository;
+    @MockitoBean com.untitles.domain.workspace.repository.WorkspaceRepository workspaceRepository;
     @MockitoBean WorkspaceMemberHelper workspaceMemberHelper;
     @MockitoBean com.untitles.domain.trash.service.TrashService trashService;
 

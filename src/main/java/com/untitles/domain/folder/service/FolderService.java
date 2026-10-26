@@ -29,6 +29,7 @@ public class FolderService {
     private final WorkspaceMemberHelper workspaceMemberHelper;
     private final WorkspaceTreeReader workspaceTreeReader;
     private final TrashService trashService;
+    private final com.untitles.domain.workspace.repository.WorkspaceRepository workspaceRepository;
 
     /**
      * 폴더 생성
@@ -42,6 +43,7 @@ public class FolderService {
         Users user = member.getUser();
         Workspace workspace = member.getWorkspace();
 
+        workspaceRepository.findByIdForUpdate(workspace.getWorkspaceId());  // 동시 생성으로 개수 제한을 넘지 않게
         long folderCount = folderRepository.countByWorkspace(workspace);
         if (folderCount >= 20) {
             throw new BusinessException(ErrorCode.FOLDER_LIMIT_EXCEEDED);

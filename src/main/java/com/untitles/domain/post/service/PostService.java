@@ -32,6 +32,7 @@ public class PostService {
     private final WorkspaceMemberHelper workspaceMemberHelper;
     private final PostLinkService postLinkService;
     private final PostLinkRepository postLinkRepository;
+    private final com.untitles.domain.workspace.repository.WorkspaceRepository workspaceRepository;
 
     /**
      * 게시글 상세 조회
@@ -55,6 +56,7 @@ public class PostService {
         Users user = member.getUser();
         Workspace workspace = member.getWorkspace();
 
+        workspaceRepository.findByIdForUpdate(workspaceId);  // 동시 생성으로 개수 제한을 넘지 않게
         long postCount = postRepository.countByWorkspace(workspace);
         if (postCount >= 50) {
             throw new BusinessException(ErrorCode.POST_LIMIT_EXCEEDED);

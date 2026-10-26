@@ -27,6 +27,9 @@ import static org.mockito.Mockito.*;
 class PostServiceTest {
 
     @Mock
+    com.untitles.domain.workspace.repository.WorkspaceRepository workspaceRepository;
+
+    @Mock
     private PostRepository postRepository;
     @Mock
     private FolderRepository folderRepository;

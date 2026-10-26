@@ -40,6 +40,7 @@ class EvictWorkspaceCachesTest {
     }
 
     @MockitoBean PostRepository postRepository;
+    @MockitoBean com.untitles.domain.workspace.repository.WorkspaceRepository workspaceRepository;
     @MockitoBean FolderRepository folderRepository;
     @MockitoBean HtmlSanitizer htmlSanitizer;
     @MockitoBean WorkspaceMemberHelper workspaceMemberHelper;
