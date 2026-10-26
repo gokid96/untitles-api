@@ -26,12 +26,14 @@ class ImageServiceTest {
     private static final byte[] PNG = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0};
 
     private S3Client s3Client;
+    private com.untitles.domain.image.repository.UploadedImageRepository uploadedImageRepository;
     private ImageService imageService;
 
     @BeforeEach
     void setUp() {
         s3Client = mock(S3Client.class);
-        imageService = new ImageService(s3Client, mock(com.untitles.domain.image.repository.UploadedImageRepository.class));
+        uploadedImageRepository = mock(com.untitles.domain.image.repository.UploadedImageRepository.class);
+        imageService = new ImageService(s3Client, uploadedImageRepository);
         ReflectionTestUtils.setField(imageService, "bucket", "bucket");
         ReflectionTestUtils.setField(imageService, "publicUrl", PUBLIC_URL);
     }
@@ -91,5 +93,20 @@ class ImageServiceTest {
 
         assertThatThrownBy(() -> imageService.uploadPostImage(file, 1L))
                 .extracting("errorCode").isEqualTo(ErrorCode.IMAGE_TOO_LARGE);
+    }
+
+    @Test
+    @DisplayName("사용자 저장 한도를 넘으면 STORAGE_QUOTA_EXCEEDED, 업로드하면 기록을 남긴다")
+    void quota() {
+        MockMultipartFile file = new MockMultipartFile("file", "a.png", "image/png", PNG);
+
+        when(uploadedImageRepository.sumSizeByUserId(1L)).thenReturn(200L * 1024 * 1024);
+        assertThatThrownBy(() -> imageService.uploadPostImage(file, 1L))
+                .extracting("errorCode").isEqualTo(ErrorCode.STORAGE_QUOTA_EXCEEDED);
+        verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+
+        when(uploadedImageRepository.sumSizeByUserId(1L)).thenReturn(0L);
+        imageService.uploadPostImage(file, 1L);
+        verify(uploadedImageRepository).save(any(com.untitles.domain.image.entity.UploadedImage.class));
     }
 }

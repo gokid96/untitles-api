@@ -28,6 +28,8 @@ public class RateLimitFilter implements Filter {
     // IP별 버킷 타입별 캐시 키 생성
     private static final String LOGIN_PREFIX = "login:";
     private static final String EMAIL_PREFIX = "email:";
+    private static final String SIGNUP_PREFIX = "signup:";
+    private static final String UPLOAD_PREFIX = "upload:";
     private static final String DEFAULT_PREFIX = "default:";
 
     @Override
@@ -63,6 +65,10 @@ public class RateLimitFilter implements Filter {
         if (path.contains("/auth/login")) {
             String key = LOGIN_PREFIX + clientIp;
             return rateLimitBuckets.get(key, k -> RateLimitConfig.createLoginBucket());  // 분당 10회
+        } else if (path.contains("/auth/signup")) {
+            return rateLimitBuckets.get(SIGNUP_PREFIX + clientIp, k -> RateLimitConfig.createSignupBucket());  // 시간당 5회
+        } else if (path.contains("/images/")) {
+            return rateLimitBuckets.get(UPLOAD_PREFIX + clientIp, k -> RateLimitConfig.createUploadBucket());  // 시간당 60회
         } else if (path.contains("/email/send")) {
             String key = EMAIL_PREFIX + clientIp;
             return rateLimitBuckets.get(key, k -> RateLimitConfig.createEmailBucket());  // 시간당 5회

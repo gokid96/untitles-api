@@ -30,6 +30,7 @@ public enum ErrorCode {
     // 400 Bad Request (이미지 업로드)
     IMAGE_EMPTY(HttpStatus.BAD_REQUEST, "파일이 비어있습니다."),
     IMAGE_TOO_LARGE(HttpStatus.BAD_REQUEST, "파일 크기는 5MB 이하여야 합니다."),
+    STORAGE_QUOTA_EXCEEDED(HttpStatus.BAD_REQUEST, "이미지 저장 공간을 모두 사용했습니다. 쓰지 않는 이미지가 든 노트를 정리해 주세요."),
     INVALID_IMAGE_TYPE(HttpStatus.BAD_REQUEST, "JPG, PNG, GIF, WEBP 이미지만 업로드할 수 있습니다."),
     OWNER_HAS_TEAM_MEMBERS(HttpStatus.BAD_REQUEST, "다른 멤버가 있는 워크스페이스의 소유자는 탈퇴할 수 없습니다. 워크스페이스를 삭제하거나 멤버를 내보낸 뒤 다시 시도해주세요."),
 

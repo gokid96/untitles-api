@@ -26,7 +26,7 @@ public class RateLimitConfig {
     @Bean
     public Cache<String, Bucket> rateLimitBuckets() {
         return Caffeine.newBuilder()
-                .expireAfterAccess(10, TimeUnit.MINUTES)
+                .expireAfterAccess(2, TimeUnit.HOURS)  // 시간 단위 제한이 중간에 초기화되지 않도록
                 .maximumSize(10000)
                 .build();
     }
@@ -46,6 +46,22 @@ public class RateLimitConfig {
      */
     public static Bucket createLoginBucket() {
         Bandwidth limit = Bandwidth.classic(10, Refill.greedy(10, Duration.ofMinutes(1)));
+        return Bucket.builder().addLimit(limit).build();
+    }
+
+    /**
+     * 회원가입용 Bucket (IP당 시간당 5회) - 봇의 대량 가입 방지
+     */
+    public static Bucket createSignupBucket() {
+        Bandwidth limit = Bandwidth.classic(5, Refill.greedy(5, Duration.ofHours(1)));
+        return Bucket.builder().addLimit(limit).build();
+    }
+
+    /**
+     * 이미지 업로드용 Bucket (IP당 시간당 60회)
+     */
+    public static Bucket createUploadBucket() {
+        Bandwidth limit = Bandwidth.classic(60, Refill.greedy(60, Duration.ofHours(1)));
         return Bucket.builder().addLimit(limit).build();
     }
 

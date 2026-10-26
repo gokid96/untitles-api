@@ -33,6 +33,10 @@ public class ImageService {
 
     private static final long MAX_SIZE = 5 * 1024 * 1024;
 
+    // 사용자별 이미지 저장 한도 (기본 200MB)
+    @Value("${app.upload.quota-mb:200}")
+    private long quotaMb = 200;
+
     /**
      * 허용 이미지 형식. 클라이언트가 보낸 Content-Type·확장자는 믿지 않고 파일 앞부분(시그니처)으로 판별한다.
      * SVG는 스크립트를 담을 수 있어 허용하지 않는다.
@@ -91,6 +95,10 @@ public class ImageService {
     private String upload(MultipartFile file, String folder, Long userId) {
         byte[] bytes = readAndValidate(file);
         ImageType type = detectType(bytes);
+        if (userId != null
+                && uploadedImageRepository.sumSizeByUserId(userId) + bytes.length > quotaMb * 1024 * 1024) {
+            throw new BusinessException(ErrorCode.STORAGE_QUOTA_EXCEEDED);
+        }
         String key = folder + "/" + UUID.randomUUID() + type.extension;
 
         try {
