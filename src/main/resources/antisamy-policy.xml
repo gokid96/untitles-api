@@ -150,6 +150,7 @@
         </tag>
         <tag name="ol" action="validate"/>
         <tag name="li" action="validate">
+            <attribute name="data-type"/>
             <attribute name="data-checked"/>
         </tag>
         

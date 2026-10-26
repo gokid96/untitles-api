@@ -80,4 +80,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE Post p SET p.author = null WHERE p.author.userId = :userId")
     void clearAuthor(@Param("userId") Long userId);
+
+    /**
+     * 예전에 저장 과정에서 빠진 체크리스트 항목 표시(data-type="taskItem")를 되살린다.
+     * 휴지통에 있는 글도 포함하며, 이미 고친 글은 다시 건드리지 않는다.
+     */
+    @org.springframework.transaction.annotation.Transactional
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE post SET content = REPLACE(content, '<li data-checked=', '<li data-type=\"taskItem\" data-checked=') " +
+            "WHERE content LIKE '%<li data-checked=%'", nativeQuery = true)
+    int repairChecklistItems();
 }
