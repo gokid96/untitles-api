@@ -14,7 +14,7 @@ public class PostCreateRequestDTO {
 
     @Size(max = 200)
     private String title;
-    @Size(max = 50000)
+    @Size(max = 500000, message = "노트가 너무 깁니다. (최대 50만 자)")
     private String content;
     private Long folderId;
 }
