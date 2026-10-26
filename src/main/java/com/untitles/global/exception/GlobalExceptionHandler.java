@@ -41,6 +41,15 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 같은 값이 동시에 저장되어 유일성 제약에 걸린 경우 (예: 같은 아이디로 동시 가입) - 409
+     */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException e) {
+        log.warn("Data integrity violation: {}", e.getMostSpecificCause().getMessage());
+        return createErrorResponse(HttpStatus.CONFLICT, "이미 사용 중이거나 동시에 처리된 요청입니다. 다시 시도해주세요.");
+    }
+
+    /**
      * 트랜잭션 예외 처리
      */
     @ExceptionHandler(TransactionSystemException.class)
