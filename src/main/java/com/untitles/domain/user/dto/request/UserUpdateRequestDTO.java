@@ -22,4 +22,9 @@ public class UserUpdateRequestDTO {
 
     @Size(max = 500)
     private String profileImage;
+
+    // 비밀번호 찾기용 이메일 (null이면 그대로, 빈 문자열이면 삭제)
+    @jakarta.validation.constraints.Email(message = "이메일 형식이 올바르지 않습니다")
+    @Size(max = 100, message = "이메일은 100자를 초과할 수 없습니다")
+    private String email;
 }

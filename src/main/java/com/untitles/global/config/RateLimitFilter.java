@@ -69,7 +69,7 @@ public class RateLimitFilter implements Filter {
             return rateLimitBuckets.get(SIGNUP_PREFIX + clientIp, k -> RateLimitConfig.createSignupBucket());  // 시간당 5회
         } else if (path.contains("/images/")) {
             return rateLimitBuckets.get(UPLOAD_PREFIX + clientIp, k -> RateLimitConfig.createUploadBucket());  // 시간당 60회
-        } else if (path.contains("/email/send")) {
+        } else if (path.contains("/email/send") || path.contains("/password-reset/request")) {
             String key = EMAIL_PREFIX + clientIp;
             return rateLimitBuckets.get(key, k -> RateLimitConfig.createEmailBucket());  // 시간당 5회
         } else {

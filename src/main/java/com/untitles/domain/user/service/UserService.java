@@ -83,6 +83,14 @@ public class UserService {
             }
             user.updateProfileImage(newProfileImage);
         }
+        if (request.getEmail() != null) {
+            String newEmail = StringUtils.hasText(request.getEmail()) ? request.getEmail().trim() : null;
+            if (newEmail != null && !newEmail.equalsIgnoreCase(user.getEmail() == null ? "" : user.getEmail())
+                    && userRepository.existsByEmail(newEmail)) {
+                throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+            }
+            user.updateEmail(newEmail);
+        }
         if (StringUtils.hasText(request.getNewPassword())) {
             if (!StringUtils.hasText(request.getCurrentPassword())) {
                 throw new BusinessException(ErrorCode.INVALID_INPUT);

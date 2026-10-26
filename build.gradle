@@ -33,6 +33,7 @@ dependencies {
     implementation 'software.amazon.awssdk:s3'
     implementation platform('software.amazon.awssdk:bom:2.25.0')
     implementation 'software.amazon.awssdk:sesv2'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     
     // XSS 방지를 위한 HTML Sanitizer

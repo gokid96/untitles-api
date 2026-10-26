@@ -22,7 +22,7 @@ class AuthControllerValidationTest {
     @BeforeEach
     void setUp() {
         authService = mock(AuthService.class);
-        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(authService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new AuthController(authService, mock(com.untitles.domain.auth.service.PasswordResetService.class)))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }

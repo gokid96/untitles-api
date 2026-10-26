@@ -109,7 +109,19 @@ cloudflare:
     bucket: ${R2_BUCKET_NAME}
     public-url: ${R2_PUBLIC_URL}
 
+spring.mail:
+  # MAIL_PROVIDER=smtp 일 때 사용. 서버 환경변수 SPRING_MAIL_HOST / SPRING_MAIL_PORT / SPRING_MAIL_USERNAME / SPRING_MAIL_PASSWORD
+  properties:
+    mail.smtp.auth: true
+    mail.smtp.starttls.enable: true
+    mail.smtp.connectiontimeout: 10000
+    mail.smtp.timeout: 10000
+
 app:
+  mail:
+    # 메일 발송 수단: log(발송하지 않고 로그만, 기본) | smtp | ses
+    provider: ${MAIL_PROVIDER:log}
+    from: ${MAIL_FROM:noreply@untitles.net}
   oauth2:
     redirect-uri: http://localhost:5173
   signup:

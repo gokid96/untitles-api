@@ -39,6 +39,7 @@ public enum ErrorCode {
     VERIFICATION_NOT_REQUESTED(HttpStatus.BAD_REQUEST, "인증 요청을 먼저 해주세요."),
     VERIFICATION_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "인증번호가 만료되었습니다."),
     VERIFICATION_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "인증번호가 일치하지 않습니다."),
+    PASSWORD_RESET_INVALID(HttpStatus.BAD_REQUEST, "인증번호가 올바르지 않거나 만료되었습니다. 다시 요청해주세요."),
 
     // 401 Unauthorized
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 일치하지 않습니다."),
