@@ -31,7 +31,7 @@ class ImageServiceTest {
     @BeforeEach
     void setUp() {
         s3Client = mock(S3Client.class);
-        imageService = new ImageService(s3Client);
+        imageService = new ImageService(s3Client, mock(com.untitles.domain.image.repository.UploadedImageRepository.class));
         ReflectionTestUtils.setField(imageService, "bucket", "bucket");
         ReflectionTestUtils.setField(imageService, "publicUrl", PUBLIC_URL);
     }
@@ -57,7 +57,7 @@ class ImageServiceTest {
                 .getBytes(StandardCharsets.UTF_8);
         MockMultipartFile file = new MockMultipartFile("file", "a.svg", "image/svg+xml", svg);
 
-        assertThatThrownBy(() -> imageService.uploadPostImage(file))
+        assertThatThrownBy(() -> imageService.uploadPostImage(file, 1L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_IMAGE_TYPE);
         verifyNoInteractions(s3Client);
@@ -89,7 +89,7 @@ class ImageServiceTest {
         System.arraycopy(PNG, 0, big, 0, PNG.length);
         MockMultipartFile file = new MockMultipartFile("file", "a.png", "image/png", big);
 
-        assertThatThrownBy(() -> imageService.uploadPostImage(file))
+        assertThatThrownBy(() -> imageService.uploadPostImage(file, 1L))
                 .extracting("errorCode").isEqualTo(ErrorCode.IMAGE_TOO_LARGE);
     }
 }

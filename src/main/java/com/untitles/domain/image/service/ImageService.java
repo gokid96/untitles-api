@@ -1,5 +1,7 @@
 package com.untitles.domain.image.service;
 
+import com.untitles.domain.image.entity.UploadedImage;
+import com.untitles.domain.image.repository.UploadedImageRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ImageService {
     private final S3Client s3Client;
+    private final UploadedImageRepository uploadedImageRepository;
 
     @Value("${cloudflare.r2.bucket}")
     private String bucket;
@@ -52,15 +55,15 @@ public class ImageService {
     /**
      * 게시글 이미지 업로드
      */
-    public String uploadPostImage(MultipartFile file) {
-        return upload(file, "posts");
+    public String uploadPostImage(MultipartFile file, Long userId) {
+        return upload(file, "posts", userId);
     }
 
     /**
      * 프로필 이미지 업로드. 사용자별 경로(profiles/{userId}/)에 저장해 소유자를 확인할 수 있게 한다.
      */
     public String uploadProfileImage(MultipartFile file, Long userId) {
-        return upload(file, profilePrefix(userId));
+        return upload(file, profilePrefix(userId), userId);
     }
 
     /**
@@ -85,7 +88,7 @@ public class ImageService {
                 .build());
     }
 
-    private String upload(MultipartFile file, String folder) {
+    private String upload(MultipartFile file, String folder, Long userId) {
         byte[] bytes = readAndValidate(file);
         ImageType type = detectType(bytes);
         String key = folder + "/" + UUID.randomUUID() + type.extension;
@@ -98,6 +101,8 @@ public class ImageService {
                     .build();
 
             s3Client.putObject(request, RequestBody.fromBytes(bytes));
+            // 용량 계산과 미사용 이미지 정리를 위해 기록
+            uploadedImageRepository.save(UploadedImage.of(userId, key, bytes.length));
             return publicUrl + "/" + key;
         } catch (Exception e) {
             throw new RuntimeException("이미지 업로드 실패", e);
