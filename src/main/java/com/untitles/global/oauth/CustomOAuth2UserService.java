@@ -28,6 +28,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private final UserRepository userRepository;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -150,5 +151,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         WorkspaceMember member = WorkspaceMember.createOwner(workspace, user);
 
         workspaceMemberRepository.save(member);
+        eventPublisher.publishEvent(new com.untitles.domain.onboarding.event.UserSignedUpEvent(user.getUserId(), workspace.getWorkspaceId()));
     }
 }

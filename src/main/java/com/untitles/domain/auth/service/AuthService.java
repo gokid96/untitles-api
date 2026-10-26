@@ -7,6 +7,7 @@ import com.untitles.domain.user.dto.request.UserCreateRequestDTO;
 import com.untitles.domain.user.dto.request.UserLoginRequestDTO;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.user.repository.UserRepository;
+import com.untitles.domain.onboarding.event.UserSignedUpEvent;
 import com.untitles.domain.workspace.entity.Workspace;
 import com.untitles.domain.workspace.entity.WorkspaceMember;
 import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
@@ -33,6 +34,7 @@ public class AuthService {
     private final EmailService emailService;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
     private final RefreshTokenService refreshTokenService;
 
     @Value("${app.signup.email-verification-required:true}")
@@ -91,6 +93,7 @@ public class AuthService {
 
         WorkspaceMember owner = WorkspaceMember.createOwner(personalWorkspace, savedUser);
         workspaceMemberRepository.save(owner);
+        eventPublisher.publishEvent(new UserSignedUpEvent(savedUser.getUserId(), personalWorkspace.getWorkspaceId()));
 
         if (email != null) {
             emailService.deleteVerification(email);

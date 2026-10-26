@@ -31,6 +31,7 @@ class AuthServiceTest {
     @Mock private WorkspaceRepository workspaceRepository;
     @Mock private WorkspaceMemberRepository workspaceMemberRepository;
     @Mock private RefreshTokenService refreshTokenService;
+    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private AuthService authService;
