@@ -67,6 +67,15 @@ REDIS_PASSWORD=
 AWS_ACCESS_KEY=
 AWS_SECRET_KEY=
 
+# Mail (password reset, signup verification). MAIL_PROVIDER: log (default, sends nothing) | smtp | ses
+MAIL_PROVIDER=
+MAIL_FROM=
+# SMTP, when MAIL_PROVIDER=smtp (e.g. Gmail: smtp.gmail.com, 587, the Gmail address, an app password)
+SPRING_MAIL_HOST=
+SPRING_MAIL_PORT=
+SPRING_MAIL_USERNAME=
+SPRING_MAIL_PASSWORD=
+
 # Cloudflare R2 (all profiles)
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
