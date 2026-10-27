@@ -1,0 +1,133 @@
+package com.untitles.domain.collab.service;
+
+import com.untitles.domain.collab.dto.CollabDtos.AccessResponse;
+import com.untitles.domain.collab.dto.CollabDtos.DocumentResponse;
+import com.untitles.domain.collab.dto.CollabDtos.StoreResponse;
+import com.untitles.domain.collab.entity.PostCollabState;
+import com.untitles.domain.collab.repository.PostCollabStateRepository;
+import com.untitles.domain.link.service.PostLinkService;
+import com.untitles.domain.post.entity.Post;
+import com.untitles.domain.post.repository.PostRepository;
+import com.untitles.domain.workspace.entity.WorkspaceRole;
+import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
+import com.untitles.global.cache.EvictWorkspaceCaches;
+import com.untitles.global.exception.BusinessException;
+import com.untitles.global.exception.ErrorCode;
+import com.untitles.global.util.HtmlSanitizer;
+import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
+import java.util.HexFormat;
+
+@Service
+@RequiredArgsConstructor
+public class CollabService {
+
+    static final int MAX_CONTENT_LENGTH = 500_000;
+    static final int MAX_TITLE_LENGTH = 200;
+
+    private final PostRepository postRepository;
+    private final PostCollabStateRepository stateRepository;
+    private final WorkspaceMemberRepository memberRepository;
+    private final PostLinkService postLinkService;
+    private final HtmlSanitizer htmlSanitizer;
+
+    /** 저장 시 baseHash가 현재 DB와 다를 때 (다른 경로로 바뀜) */
+    public static class StaleBaseException extends RuntimeException {
+        private final transient StoreResponse current;
+
+        public StaleBaseException(StoreResponse current) {
+            super("collab base is stale");
+            this.current = current;
+        }
+
+        public StoreResponse getCurrent() {
+            return current;
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public AccessResponse access(Long userId, Long workspaceId, Long postId) {
+        if (postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId).isEmpty()) {
+            return new AccessResponse(false, false);
+        }
+        return memberRepository.findByWorkspaceWorkspaceIdAndUserUserId(workspaceId, userId)
+                .map(member -> new AccessResponse(true, member.getRole() != WorkspaceRole.VIEWER))
+                .orElse(new AccessResponse(false, false));
+    }
+
+    @Transactional(readOnly = true)
+    public DocumentResponse load(Long workspaceId, Long postId) {
+        Post post = findPost(workspaceId, postId);
+        String hash = hashOf(post);
+        String ydoc = stateRepository.findById(postId)
+                .filter(state -> state.getContentHash().equals(hash))
+                .map(state -> Base64.getEncoder().encodeToString(state.getYdoc()))
+                .orElse(null);
+        return new DocumentResponse(post.getTitle(), post.getContent(), hash, ydoc);
+    }
+
+    @Transactional
+    @EvictWorkspaceCaches
+    public StoreResponse store(Long workspaceId, Long postId, String title, String content, String ydocBase64, String baseHash) {
+        Post post = findPost(workspaceId, postId);
+        String currentHash = hashOf(post);
+        if (baseHash != null && !baseHash.equals(currentHash)) {
+            throw new StaleBaseException(new StoreResponse(currentHash, post.getTitle(), post.getContent()));
+        }
+
+        String safeContent = content == null ? "" : content;
+        if (safeContent.length() > MAX_CONTENT_LENGTH) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+        String safeTitle = StringUtils.hasText(title) ? title.trim() : "무제";
+        if (safeTitle.length() > MAX_TITLE_LENGTH) {
+            safeTitle = safeTitle.substring(0, MAX_TITLE_LENGTH);
+        }
+
+        String sanitized = htmlSanitizer.sanitize(safeContent);
+        if (sanitized == null) sanitized = "";
+        if (!safeTitle.equals(post.getTitle()) || !sanitized.equals(post.getContent())) {
+            post.updateTitle(safeTitle);
+            post.updateContent(sanitized);
+            postLinkService.syncLinks(post);
+            postRepository.saveAndFlush(post);  // 버전이 올라가 예전 방식으로 편집 중인 기기는 충돌로 감지한다
+        }
+
+        String newHash = hashOf(post);
+        byte[] ydoc = Base64.getDecoder().decode(ydocBase64);
+        stateRepository.findById(postId).ifPresentOrElse(
+                state -> state.update(ydoc, newHash),
+                () -> stateRepository.save(PostCollabState.of(postId, ydoc, newHash)));
+        return new StoreResponse(newHash, post.getTitle(), post.getContent());
+    }
+
+    /** 매일 새벽, 영구 삭제된 노트의 편집 상태를 지운다 */
+    @Scheduled(cron = "0 45 4 * * *")
+    @Transactional
+    public void deleteOrphans() {
+        stateRepository.deleteOrphans();
+    }
+
+    private Post findPost(Long workspaceId, Long postId) {
+        return postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.POST_NOT_FOUND));
+    }
+
+    static String hashOf(Post post) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest((post.getTitle() + "\u0000" + post.getContent()).getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(bytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+}

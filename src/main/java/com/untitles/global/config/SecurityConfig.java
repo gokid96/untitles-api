@@ -42,7 +42,9 @@ public class SecurityConfig {
             "/oauth2/**",
             "/login/oauth2/**",
             "/error",
-            "/actuator/**"
+            "/actuator/**",
+            // 실시간 편집 서버 전용. 공개 프록시에서 막고, 컨트롤러가 공유 비밀값을 확인한다
+            "/internal/collab/**"
     };
 
     @Bean

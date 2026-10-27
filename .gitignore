@@ -40,3 +40,7 @@ out/
 .env
 api.env
 cookies.txt
+
+# collab server
+collab/node_modules/
+collab.env
