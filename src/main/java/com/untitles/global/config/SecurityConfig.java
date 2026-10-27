@@ -69,6 +69,12 @@ public class SecurityConfig {
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        // 웹 애플 로그인: 애플 로그인 페이지가 브라우저를 통해 이 주소로 결과를 POST한다 (Origin: appleid.apple.com).
+        // 이 경로에만 애플 출처를 허용한다 (먼저 등록한 경로가 우선)
+        CorsConfiguration appleCallback = new CorsConfiguration();
+        appleCallback.setAllowedOrigins(Arrays.asList("https://appleid.apple.com", "null"));
+        appleCallback.setAllowedMethods(Arrays.asList("POST"));
+        source.registerCorsConfiguration("/api/v1/auth/social/apple/callback", appleCallback);
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
