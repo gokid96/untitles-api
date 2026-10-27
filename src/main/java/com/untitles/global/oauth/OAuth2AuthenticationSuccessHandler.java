@@ -1,6 +1,7 @@
 package com.untitles.global.oauth;
 
-import jakarta.servlet.ServletException;
+import com.untitles.domain.auth.social.LoginCodeStore;
+import com.untitles.domain.auth.social.SocialProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,10 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
+/**
+ * 웹 리다이렉트 방식 소셜 로그인 성공: 토큰 대신 1분짜리 일회용 코드를 넘긴다.
+ * 웹은 /oauth/callback, 앱은 앱 전용 주소(net.untitles.app://oauth/callback)로 돌려보낸다.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -20,25 +25,20 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     @Value("${app.oauth2.redirect-uri:http://localhost:5173}")
     private String redirectUri;
 
-    private final com.untitles.domain.auth.service.RefreshTokenService refreshTokenService;
+    private final LoginCodeStore loginCodeStore;
+    private final SocialProperties socialProperties;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-                                        Authentication authentication) throws IOException, ServletException {
-
+                                        Authentication authentication) throws IOException {
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
+        String code = loginCodeStore.issue(oAuth2User.getUserId());
+        boolean app = OAuthTarget.isApp(request);
+        OAuthTarget.clear(request, response);
 
-        var tokens = refreshTokenService.issue(oAuth2User.getUserId(), oAuth2User.getName());
-        String accessToken = tokens.accessToken();
-        String refreshToken = tokens.refreshToken();
+        log.info("OAuth2 로그인 성공: userId={} ({})", oAuth2User.getUserId(), app ? "app" : "web");
 
-        log.info("OAuth2 로그인 성공: {} (ID: {})", oAuth2User.getName(), oAuth2User.getUserId());
-
-        // 프론트엔드로 토큰 전달
-        String targetUrl = redirectUri + "/oauth/callback"
-                + "?accessToken=" + accessToken
-                + "&refreshToken=" + refreshToken;
-
-        getRedirectStrategy().sendRedirect(request, response, targetUrl);
+        String base = app ? socialProperties.appRedirectUri() : redirectUri + "/oauth/callback";
+        getRedirectStrategy().sendRedirect(request, response, base + "?code=" + code);
     }
 }

@@ -106,7 +106,10 @@ public class SecurityConfig {
                 )
 
                 // JwtFilter를 Security 필터 체인에 추가
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                // 소셜 로그인 시작 시 돌아갈 곳(웹/앱) 기억
+                .addFilterBefore(new com.untitles.global.oauth.OAuthTarget.Filter(),
+                        org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter.class);
 
         return http.build();
     }

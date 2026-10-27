@@ -17,10 +17,13 @@ import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Component
+@lombok.RequiredArgsConstructor
 public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationFailureHandler {
 
     @Value("${app.oauth2.redirect-uri:http://localhost:5173}")
     private String redirectUri;
+
+    private final com.untitles.domain.auth.social.SocialProperties socialProperties;
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
@@ -44,7 +47,10 @@ public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationF
         String encodedMessage = URLEncoder.encode(errorMessage, StandardCharsets.UTF_8);
         String encodedCode = URLEncoder.encode(errorCode, StandardCharsets.UTF_8);
 
+        boolean app = OAuthTarget.isApp(request);
+        OAuthTarget.clear(request, response);
+        String base = app ? socialProperties.appRedirectUri() : redirectUri + "/login";
         getRedirectStrategy().sendRedirect(request, response,
-                redirectUri + "/login?error=" + encodedMessage + "&error_code=" + encodedCode);
+                base + "?error=" + encodedMessage + "&error_code=" + encodedCode);
     }
 }

@@ -30,6 +30,6 @@ public class CustomOAuth2User extends CustomUserDetails implements OAuth2User {
 
     @Override
     public String getName() {
-        return getEmail();
+        return String.valueOf(getUserId());  // 이메일이 없는 소셜 계정도 있으므로 사용자 ID
     }
 }

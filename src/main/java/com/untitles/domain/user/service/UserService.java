@@ -43,6 +43,9 @@ public class UserService {
     private final FolderRepository folderRepository;
     private final EmailVerificationRepository emailVerificationRepository;
     private final com.untitles.domain.auth.service.RefreshTokenService refreshTokenService;
+    private final com.untitles.domain.auth.repository.SocialAccountRepository socialAccountRepository;
+    private final com.untitles.domain.auth.repository.PasswordResetRepository passwordResetRepository;
+    private final com.untitles.domain.auth.social.AppleAuthClient appleAuthClient;
 
     private static final int SEARCH_MIN_LENGTH = 2;
     private static final int SEARCH_LIMIT = 10;
@@ -53,7 +56,15 @@ public class UserService {
     public UserResponseDTO getUserInfo(Long userId) {
         Users user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        return UserResponseDTO.from(user);
+        return toResponse(user);
+    }
+
+    private UserResponseDTO toResponse(Users user) {
+        List<String> providers = socialAccountRepository.findAllByUserId(user.getUserId()).stream()
+                .map(account -> account.getProvider().name())
+                .distinct()
+                .toList();
+        return UserResponseDTO.from(user, providers);
     }
 
     /**
@@ -86,17 +97,20 @@ public class UserService {
         if (request.getEmail() != null) {
             String newEmail = StringUtils.hasText(request.getEmail()) ? request.getEmail().trim() : null;
             if (newEmail != null && !newEmail.equalsIgnoreCase(user.getEmail() == null ? "" : user.getEmail())
-                    && userRepository.existsByEmail(newEmail)) {
+                    && userRepository.existsByEmailIgnoreCase(newEmail)) {
                 throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
             }
             user.updateEmail(newEmail);
         }
         if (StringUtils.hasText(request.getNewPassword())) {
-            if (!StringUtils.hasText(request.getCurrentPassword())) {
-                throw new BusinessException(ErrorCode.INVALID_INPUT);
-            }
-            if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-                throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+            // 비밀번호가 이미 있으면 현재 비밀번호 확인. 소셜 가입 계정은 처음 설정할 때 생략
+            if (user.hasPassword()) {
+                if (!StringUtils.hasText(request.getCurrentPassword())) {
+                    throw new BusinessException(ErrorCode.INVALID_INPUT);
+                }
+                if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+                    throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+                }
             }
             user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
             // 다른 기기를 포함한 모든 로그인 무효화 (다시 로그인해야 함)
@@ -104,7 +118,7 @@ public class UserService {
         }
 
         userRepository.save(user);
-        return UserResponseDTO.from(user);
+        return toResponse(user);
     }
 
     /**
@@ -142,6 +156,14 @@ public class UserService {
         }
         deleteProfileImageQuietly(user.getProfileImage(), userId);
         refreshTokenService.revokeAll(userId);
+        passwordResetRepository.deleteByUserId(userId);
+
+        // 5. 소셜 연결 삭제. 애플은 애플 쪽 연결도 끊는다 (App Store 심사 지침)
+        socialAccountRepository.findAllByUserId(userId).stream()
+                .filter(account -> account.getAppleRefreshToken() != null)
+                .forEach(account -> appleAuthClient.revoke(account.getAppleRefreshToken(), account.getAppleClientId()));
+        socialAccountRepository.deleteAllByUserId(userId);
+
         userRepository.delete(user);
     }
 

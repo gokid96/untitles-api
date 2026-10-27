@@ -55,6 +55,16 @@ KAKAO_CLIENT_ID=
 KAKAO_CLIENT_SECRET=
 NAVER_CLIENT_ID=
 NAVER_CLIENT_SECRET=
+# Kakao consent items (default profile_nickname,profile_image; add account_email after the Kakao app becomes a biz app)
+KAKAO_SCOPE=
+
+# App / web ID-token login (comma-separated client IDs accepted as the token audience)
+GOOGLE_ID_TOKEN_CLIENT_IDS=   # Google web client ID, iOS client ID
+APPLE_CLIENT_IDS=             # net.untitles.app (iOS app), the web Services ID
+# Sign in with Apple key (.p8): revokes the Apple link when a user deletes the account (App Store rule)
+APPLE_TEAM_ID=
+APPLE_KEY_ID=
+APPLE_PRIVATE_KEY=            # .p8 content on one line, newlines written as \n
 
 # JWT (prod/test; the dev profile sets jwt.secret in application-dev.yml)
 JWT_SECRET=

@@ -36,9 +36,8 @@ spring:
             authorization-grant-type: authorization_code
             client-authentication-method: client_secret_post
             client-name: Kakao
-            scope:
-              - profile_nickname
-              - account_email
+            # 동의 항목: 이메일은 카카오 비즈 앱 전환 후 account_email을 추가 (KAKAO_SCOPE로 변경)
+            scope: ${KAKAO_SCOPE:profile_nickname,profile_image}
 
           naver:
             client-id: ${NAVER_CLIENT_ID}
@@ -118,6 +117,15 @@ spring.mail:
     mail.smtp.timeout: 10000
 
 app:
+  social:
+    # 앱·웹(애플)의 ID 토큰 로그인에서 aud로 허용할 클라이언트 ID (쉼표로 여러 개)
+    google-client-ids: ${GOOGLE_ID_TOKEN_CLIENT_IDS:}
+    apple-client-ids: ${APPLE_CLIENT_IDS:}
+    # Sign in with Apple 키: 탈퇴 시 애플 연결 해제용 (없으면 해제를 건너뜀)
+    apple-team-id: ${APPLE_TEAM_ID:}
+    apple-key-id: ${APPLE_KEY_ID:}
+    apple-private-key: ${APPLE_PRIVATE_KEY:}
+    app-redirect-uri: ${SOCIAL_APP_REDIRECT_URI:net.untitles.app://oauth/callback}
   mail:
     # 메일 발송 수단: log(발송하지 않고 로그만, 기본) | smtp | ses
     provider: ${MAIL_PROVIDER:log}

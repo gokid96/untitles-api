@@ -29,6 +29,9 @@ class UserServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private ImageService imageService;
     @Mock private com.untitles.domain.auth.service.RefreshTokenService refreshTokenService;
+    @Mock private com.untitles.domain.auth.repository.SocialAccountRepository socialAccountRepository;
+    @Mock private com.untitles.domain.auth.repository.PasswordResetRepository passwordResetRepository;
+    @Mock private com.untitles.domain.auth.social.AppleAuthClient appleAuthClient;
 
     @InjectMocks
     private UserService userService;
