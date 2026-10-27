@@ -30,7 +30,7 @@ public class EmailService {
      * 이메일 중복 확인
      */
     public boolean checkDuplicate(String email) {
-        return userRepository.existsByEmail(email);
+        return userRepository.existsByEmailIgnoreCase(email);
     }
 
     /**

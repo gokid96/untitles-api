@@ -35,6 +35,7 @@ public class IdTokenVerifier {
     private final JwtDecoder googleDecoder;
     private final JwtDecoder appleDecoder;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public IdTokenVerifier(SocialProperties properties) {
         this(properties,
                 NimbusJwtDecoder.withJwkSetUri(GOOGLE_JWKS).build(),
