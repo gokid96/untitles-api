@@ -60,6 +60,23 @@ public class EmailService {
     }
 
     /**
+     * 이메일 변경(또는 지금 이메일 확인)용 인증번호 발송. 다른 사람이 쓰는 이메일이면 막는다 (내 이메일은 허용)
+     */
+    @Transactional
+    public void sendChangeCode(Long userId, String email) {
+        userRepository.findByEmailIgnoreCase(email)
+                .filter(owner -> !owner.getUserId().equals(userId))
+                .ifPresent(owner -> {
+                    throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+                });
+        verificationRepository.deleteByEmail(email);
+        String verificationCode = String.format("%06d", RANDOM.nextInt(1_000_000));
+        verificationRepository.save(EmailVerification.create(email, verificationCode, EXPIRATION_MINUTES));
+        emailSender.sendAsync(email, verificationCode);
+        log.info("이메일 변경 인증번호 발송: userId={}", userId);
+    }
+
+    /**
      * 인증번호 확인
      */
     @Transactional(noRollbackFor = BusinessException.class)  // 실패 횟수 증가는 예외가 나도 저장

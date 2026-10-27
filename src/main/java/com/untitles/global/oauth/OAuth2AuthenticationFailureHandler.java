@@ -48,7 +48,14 @@ public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationF
         String encodedCode = URLEncoder.encode(errorCode, StandardCharsets.UTF_8);
 
         boolean app = OAuthTarget.isApp(request);
+        boolean linkMode = OAuthTarget.isLinkMode(request);
         OAuthTarget.clear(request, response);
+        if (linkMode) {
+            // 내 정보에서 연결하기 실패: 로그인 화면이 아니라 연결 결과 화면으로
+            String base = app ? socialProperties.appRedirectUri() : redirectUri + "/oauth/callback";
+            getRedirectStrategy().sendRedirect(request, response, base + "?mode=link&error=" + encodedMessage);
+            return;
+        }
         String base = app ? socialProperties.appRedirectUri() : redirectUri + "/login";
         String target = exception instanceof CustomOAuth2UserService.SocialLinkRequiredAuthException link
                 // 같은 이메일의 기존 계정: 이메일 로그인 화면으로 (로그인하면 소셜 계정이 연결됨)

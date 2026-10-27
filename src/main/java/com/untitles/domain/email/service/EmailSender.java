@@ -9,6 +9,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.HtmlUtils;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
 import software.amazon.awssdk.services.sesv2.model.*;
 
@@ -52,6 +53,23 @@ public class EmailSender {
         deliver(toEmail, "[untitles] 비밀번호 재설정 인증 코드",
                 codeBody("비밀번호 재설정", "비밀번호를 재설정하려면 아래 인증 코드를 입력해주세요."
                         + " 요청하지 않았다면 이 메일은 무시하셔도 됩니다.", code));
+    }
+
+    @Async("emailTaskExecutor")
+    public void sendInvitationAsync(String toEmail, String inviterName, String workspaceName, String link) {
+        String inviter = HtmlUtils.htmlEscape(inviterName == null ? "누군가" : inviterName);
+        String workspace = HtmlUtils.htmlEscape(workspaceName == null ? "" : workspaceName);
+        String body = String.format("""
+                <html>
+                <body style="font-family: sans-serif; line-height: 1.6;">
+                    <h2>%s 워크스페이스에 초대받았어요</h2>
+                    <p><strong>%s</strong>님이 Untitles의 <strong>%s</strong> 워크스페이스에 초대했어요.</p>
+                    <p><a href="%s" style="display:inline-block;padding:10px 18px;background:#4A90D9;color:#fff;border-radius:8px;text-decoration:none;">초대 보기</a></p>
+                    <p style="color:#888;font-size:13px;">초대는 7일 동안 유효해요. 수락하거나 거절할 수 있고, 모르는 초대라면 이 메일은 무시하셔도 됩니다.</p>
+                </body>
+                </html>
+                """, workspace, inviter, workspace, HtmlUtils.htmlEscape(link));
+        deliver(toEmail, "[untitles] " + (inviterName == null ? "" : inviterName) + "님이 " + workspaceName + " 워크스페이스에 초대했어요", body);
     }
 
     private static String codeBody(String title, String message, String code) {

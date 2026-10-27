@@ -25,6 +25,9 @@ import java.util.Map;
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final SocialLoginService socialLoginService;
+    private final com.untitles.domain.auth.social.SocialLinkService socialLinkService;
+    private final com.untitles.domain.auth.social.LinkIntentStore linkIntentStore;
+    private final com.untitles.domain.user.repository.UserRepository userRepository;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
@@ -41,6 +44,27 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         SocialProfile profile = new SocialProfile(provider, info.getProviderId(), info.getEmail(),
                 emailVerified(provider, attributes), info.getNickname(), info.getProfileImage());
+        // 로그인한 사용자가 내 정보에서 "연결하기"로 시작한 경우: 로그인 대신 그 계정에 연결
+        jakarta.servlet.http.HttpServletRequest request = currentRequest();
+        String intent = request != null ? OAuthTarget.linkIntent(request) : null;
+        if (intent != null) {
+            request.setAttribute(OAuthTarget.LINK_MODE_ATTRIBUTE, true);
+            request.setAttribute(LINKED_PROVIDER_ATTRIBUTE, provider.name());
+            Long userId = linkIntentStore.consume(intent);
+            if (userId == null) {
+                throw new OAuth2AuthenticationException(
+                        new OAuth2Error("social_link_expired", "연결 요청이 만료됐어요. 다시 시도해주세요.", null));
+            }
+            try {
+                socialLinkService.link(userId, profile);
+                var user = userRepository.findById(userId).orElseThrow();
+                return new CustomOAuth2User(user, attributes);
+            } catch (BusinessException e) {
+                throw new OAuth2AuthenticationException(
+                        new OAuth2Error(e.getErrorCode().name().toLowerCase(), e.getErrorCode().getMessage(), null));
+            }
+        }
+
         try {
             SocialLoginService.Result result = socialLoginService.login(profile);
             return new CustomOAuth2User(result.user(), attributes);
@@ -50,6 +74,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             throw new OAuth2AuthenticationException(
                     new OAuth2Error(e.getErrorCode().name().toLowerCase(), e.getErrorCode().getMessage(), null));
         }
+    }
+
+    public static final String LINKED_PROVIDER_ATTRIBUTE = "untitles.oauth.linkedProvider";
+
+    private static jakarta.servlet.http.HttpServletRequest currentRequest() {
+        var attributes = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        return attributes instanceof org.springframework.web.context.request.ServletRequestAttributes servlet
+                ? servlet.getRequest() : null;
     }
 
     @SuppressWarnings("unchecked")

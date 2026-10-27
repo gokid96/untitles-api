@@ -28,6 +28,8 @@ import org.springframework.web.bind.annotation.*;
 public class SocialAuthController {
 
     private final SocialAuthService socialAuthService;
+    private final SocialLinkService socialLinkService;
+    private final LinkIntentStore linkIntentStore;
     private final ObjectMapper objectMapper;
 
     @Value("${app.oauth2.redirect-uri:http://localhost:5173}")
@@ -81,6 +83,33 @@ public class SocialAuthController {
                                               @RequestParam(value = "state", required = false) String state,
                                               @RequestParam(value = "error", required = false) String error) {
         UriComponentsBuilder target = UriComponentsBuilder.fromUriString(webBaseUrl);
+
+        // 내 정보에서 연결하기로 시작했으면 state 끝에 ".일회용표시"가 붙어 있다
+        String intent = state != null && state.contains(".") ? state.substring(state.indexOf('.') + 1) : null;
+        if (intent != null) {
+            target.path("/oauth/callback").queryParam("provider", "apple").queryParam("state", state);
+            if (error != null || idToken == null) {
+                if (error != null && !"user_cancelled_authorize".equals(error)) {
+                    target.queryParam("mode", "link").queryParam("error", "애플 계정 연결에 실패했습니다.");
+                } else {
+                    target.queryParam("mode", "link").queryParam("cancelled", "1");
+                }
+                return redirect(target);
+            }
+            Long userId = linkIntentStore.consume(intent);
+            try {
+                if (userId == null) throw new BusinessException(com.untitles.global.exception.ErrorCode.SOCIAL_LINK_EXPIRED);
+                socialLinkService.linkApple(userId, idToken, code, null);
+                target.queryParam("linked", "APPLE");
+            } catch (BusinessException e) {
+                target.queryParam("mode", "link").queryParam("error", e.getErrorCode().getMessage());
+            } catch (Exception e) {
+                log.warn("애플 계정 연결 실패", e);
+                target.queryParam("mode", "link").queryParam("error", "애플 계정 연결에 실패했습니다.");
+            }
+            return redirect(target);
+        }
+
         if (error != null || idToken == null) {
             // 사용자가 취소한 경우 등: 로그인 화면으로 (취소는 메시지 없이)
             target.path("/login");

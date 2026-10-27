@@ -62,7 +62,11 @@ public class RateLimitFilter implements Filter {
      * 요청 경로에 따라 적절한 Bucket 반환
      */
     private Bucket resolveBucket(String clientIp, String path) {
-        if (path.contains("/auth/login") || path.contains("/auth/social/") || path.contains("/password-reset/confirm") || path.contains("/email/verify")) {
+        if (path.contains("/users/me/email/code")) {
+            return rateLimitBuckets.get(EMAIL_PREFIX + clientIp, k -> RateLimitConfig.createEmailBucket());  // 시간당 5회
+        }
+        if (path.contains("/auth/login") || path.contains("/auth/social/") || path.contains("/password-reset/confirm")
+                || path.contains("/email/verify") || path.endsWith("/users/me/email") || path.contains("/users/me/social/")) {
             String key = LOGIN_PREFIX + clientIp;
             return rateLimitBuckets.get(key, k -> RateLimitConfig.createLoginBucket());  // 분당 10회
         } else if (path.contains("/auth/signup")) {

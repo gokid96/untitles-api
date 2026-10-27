@@ -77,7 +77,8 @@ class WorkspaceServiceTest {
                 postRepository,
                 folderRepository,
                 new WorkspaceMemberHelper(memberRepository),
-                postLinkRepository
+                postLinkRepository,
+                org.mockito.Mockito.mock(com.untitles.domain.invitation.repository.WorkspaceInvitationRepository.class)
         );
 
         // 테스트 유저 생성
@@ -257,86 +258,6 @@ class WorkspaceServiceTest {
                     .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INSUFFICIENT_PERMISSION);
             verify(workspaceRepository, never()).delete(any());
             verifyNoInteractions(postRepository, folderRepository);
-        }
-    }
-
-    @Nested
-    @DisplayName("멤버 초대")
-    class InviteMember {
-
-        @Test
-        @DisplayName("성공")
-        void success() {
-            // given
-            MemberInviteRequest request = new MemberInviteRequest(null, "other@test.com", WorkspaceRole.MEMBER);
-
-            stubMember(1L, 1L, ownerMember);
-            when(userRepository.findByEmail("other@test.com")).thenReturn(Optional.of(otherUser));
-            when(memberRepository.existsByWorkspaceAndUser(testWorkspace, otherUser)).thenReturn(false);
-            when(memberRepository.save(any(WorkspaceMember.class))).thenAnswer(invocation -> {
-                WorkspaceMember member = invocation.getArgument(0);
-                ReflectionTestUtils.setField(member, "id", 2L);
-                return member;
-            });
-
-            // when
-            WorkspaceMemberResponse response = workspaceService.inviteMember(1L, 1L, request);
-
-            // then
-            assertThat(response.memberId()).isEqualTo(2L);
-            assertThat(response.userId()).isEqualTo(2L);
-            assertThat(response.email()).isEqualTo("other@test.com");
-            assertThat(response.role()).isEqualTo(WorkspaceRole.MEMBER);
-        }
-
-        @Test
-        @DisplayName("성공 - userId로 초대 (이메일 없는 사용자)")
-        void success_byUserId() {
-            // given
-            MemberInviteRequest request = new MemberInviteRequest(2L, null, WorkspaceRole.MEMBER);
-
-            stubMember(1L, 1L, ownerMember);
-            when(userRepository.findById(2L)).thenReturn(Optional.of(otherUser));
-            when(memberRepository.existsByWorkspaceAndUser(testWorkspace, otherUser)).thenReturn(false);
-            when(memberRepository.save(any(WorkspaceMember.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-            // when
-            workspaceService.inviteMember(1L, 1L, request);
-
-            // then
-            verify(userRepository, never()).findByEmail(any());
-            verify(memberRepository).save(any(WorkspaceMember.class));
-        }
-
-        @Test
-        @DisplayName("실패 - OWNER 권한 부여 불가")
-        void fail_cannotAssignOwner() {
-            // given
-            MemberInviteRequest request = new MemberInviteRequest(null, "other@test.com", WorkspaceRole.OWNER);
-            stubMember(1L, 1L, ownerMember);
-
-            // when & then
-            assertThatThrownBy(() -> workspaceService.inviteMember(1L, 1L, request))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CANNOT_ASSIGN_OWNER_ROLE);
-            verify(memberRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("실패 - 이미 멤버")
-        void fail_alreadyMember() {
-            // given
-            MemberInviteRequest request = new MemberInviteRequest(null, "other@test.com", WorkspaceRole.MEMBER);
-
-            stubMember(1L, 1L, ownerMember);
-            when(userRepository.findByEmail("other@test.com")).thenReturn(Optional.of(otherUser));
-            when(memberRepository.existsByWorkspaceAndUser(testWorkspace, otherUser)).thenReturn(true);
-
-            // when & then
-            assertThatThrownBy(() -> workspaceService.inviteMember(1L, 1L, request))
-                    .isInstanceOf(BusinessException.class)
-                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ALREADY_WORKSPACE_MEMBER);
-            verify(memberRepository, never()).save(any());
         }
     }
 

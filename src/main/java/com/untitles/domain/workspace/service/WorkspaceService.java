@@ -5,7 +5,6 @@ import com.untitles.domain.link.repository.PostLinkRepository;
 import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.user.repository.UserRepository;
-import com.untitles.domain.workspace.dto.request.MemberInviteRequest;
 import com.untitles.domain.workspace.dto.request.MemberRoleUpdateRequest;
 import com.untitles.domain.workspace.dto.request.WorkspaceCreateRequest;
 import com.untitles.domain.workspace.dto.request.WorkspaceUpdateRequest;
@@ -41,6 +40,7 @@ public class WorkspaceService {
     private final FolderRepository folderRepository;
     private final WorkspaceMemberHelper workspaceMemberHelper;
     private final PostLinkRepository postLinkRepository;
+    private final com.untitles.domain.invitation.repository.WorkspaceInvitationRepository invitationRepository;
 
     // 워크스페이스 생성
     @Transactional
@@ -124,45 +124,13 @@ public class WorkspaceService {
     })
     public void deleteWorkspaceData(Workspace workspace) {
         Long workspaceId = workspace.getWorkspaceId();
+        invitationRepository.deleteAllByWorkspaceId(workspaceId);
         postLinkRepository.deleteAllByWorkspaceId(workspaceId);
         postRepository.deleteByWorkspaceWorkspaceId(workspaceId);
         folderRepository.clearParentByWorkspaceId(workspaceId);
         folderRepository.deleteAllByWorkspaceId(workspaceId);
         workspaceMemberRepository.deleteAllByWorkspaceId(workspaceId);
         workspaceRepository.delete(workspace);
-    }
-
-    // 멤버 초대 (OWNER, ADMIN만)
-    @Transactional
-    public WorkspaceMemberResponse inviteMember(Long userId, Long workspaceId, MemberInviteRequest request) {
-        WorkspaceMember inviter = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
-        workspaceMemberHelper.checkPermission(inviter, WorkspaceRole.ADMIN);
-
-        if (request.role() == WorkspaceRole.OWNER) {
-            throw new BusinessException(ErrorCode.CANNOT_ASSIGN_OWNER_ROLE);
-        }
-
-        Users invitee = (request.userId() != null
-                ? userRepository.findById(request.userId())
-                : userRepository.findByEmail(request.email()))
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-        long memberCount = workspaceMemberRepository.countByWorkspace(inviter.getWorkspace());
-        if (memberCount >= 5) {
-            throw new BusinessException(ErrorCode.MEMBER_LIMIT_EXCEEDED);
-        }
-
-        if (inviter.getWorkspace().getType() == WorkspaceType.PERSONAL) {
-            throw new BusinessException(ErrorCode.CANNOT_INVITE_TO_PERSONAL_WORKSPACE);
-        }
-
-        if (workspaceMemberRepository.existsByWorkspaceAndUser(inviter.getWorkspace(), invitee)) {
-            throw new BusinessException(ErrorCode.ALREADY_WORKSPACE_MEMBER);
-        }
-
-        WorkspaceMember newMember = WorkspaceMember.createMember(inviter.getWorkspace(), invitee, request.role());
-        workspaceMemberRepository.save(newMember);
-        return WorkspaceMemberResponse.from(newMember);
     }
 
     // 멤버 목록 조회

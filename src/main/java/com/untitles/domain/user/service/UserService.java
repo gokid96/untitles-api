@@ -42,10 +42,12 @@ public class UserService {
     private final PostRepository postRepository;
     private final FolderRepository folderRepository;
     private final EmailVerificationRepository emailVerificationRepository;
+    private final com.untitles.domain.invitation.repository.WorkspaceInvitationRepository invitationRepository;
     private final com.untitles.domain.auth.service.RefreshTokenService refreshTokenService;
     private final com.untitles.domain.auth.repository.SocialAccountRepository socialAccountRepository;
     private final com.untitles.domain.auth.repository.PasswordResetRepository passwordResetRepository;
     private final com.untitles.domain.auth.social.AppleAuthClient appleAuthClient;
+    private final com.untitles.domain.email.service.EmailService emailService;
 
     private static final int SEARCH_MIN_LENGTH = 2;
     private static final int SEARCH_LIMIT = 10;
@@ -95,12 +97,11 @@ public class UserService {
             user.updateProfileImage(newProfileImage);
         }
         if (request.getEmail() != null) {
-            String newEmail = StringUtils.hasText(request.getEmail()) ? request.getEmail().trim() : null;
-            if (newEmail != null && !newEmail.equalsIgnoreCase(user.getEmail() == null ? "" : user.getEmail())
-                    && userRepository.existsByEmailIgnoreCase(newEmail)) {
-                throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+            // 이메일은 로그인 아이디이자 계정 확인 수단이라 인증 없이 바꾸거나 지울 수 없다 (POST /users/me/email)
+            String newEmail = request.getEmail().trim();
+            if (!newEmail.equalsIgnoreCase(user.getEmail() == null ? "" : user.getEmail())) {
+                throw new BusinessException(ErrorCode.EMAIL_CHANGE_NEEDS_VERIFICATION);
             }
-            user.updateEmail(newEmail);
         }
         if (StringUtils.hasText(request.getNewPassword())) {
             // 비밀번호가 이미 있으면 현재 비밀번호 확인. 소셜 가입 계정은 처음 설정할 때 생략
@@ -119,6 +120,32 @@ public class UserService {
 
         userRepository.save(user);
         return toResponse(user);
+    }
+
+    /**
+     * 이메일 변경 (또는 지금 이메일 확인): 새 이메일로 받은 인증번호가 맞으면 바꾸고 확인된 것으로 표시
+     */
+    @Transactional(noRollbackFor = BusinessException.class)  // 틀린 인증번호의 시도 횟수 차감은 남긴다
+    public UserResponseDTO changeEmail(Long userId, String email, String code) {
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        String newEmail = email.trim();
+        userRepository.findByEmailIgnoreCase(newEmail)
+                .filter(owner -> !owner.getUserId().equals(userId))
+                .ifPresent(owner -> {
+                    throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
+                });
+        emailService.verifyCode(newEmail, code);
+
+        user.updateEmail(newEmail);
+        user.markEmailVerified();
+        emailService.deleteVerification(newEmail);
+        log.info("이메일 변경: userId={}", userId);
+        return toResponse(user);
+    }
+
+    public void sendEmailChangeCode(Long userId, String email) {
+        emailService.sendChangeCode(userId, email.trim());
     }
 
     /**
@@ -147,6 +174,7 @@ public class UserService {
 
         // 3. 다른 워크스페이스 멤버십 삭제, 남긴 글·폴더는 작성자만 비움
         workspaceMemberRepository.deleteAllByUserId(userId);
+        invitationRepository.deleteAllByUser(userId);
         postRepository.clearAuthor(userId);
         folderRepository.clearUser(userId);
 

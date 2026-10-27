@@ -35,6 +35,7 @@ class UserDeletionTest {
     @MockitoBean PasswordEncoder passwordEncoder;
     @MockitoBean com.untitles.domain.auth.service.RefreshTokenService refreshTokenService;
     @MockitoBean com.untitles.domain.auth.social.AppleAuthClient appleAuthClient;
+    @MockitoBean com.untitles.domain.email.service.EmailService emailService;
 
     @Autowired UserService userService;
     @Autowired UserRepository userRepository;

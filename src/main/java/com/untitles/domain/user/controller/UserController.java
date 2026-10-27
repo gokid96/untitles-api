@@ -31,6 +31,32 @@ public class UserController {
         return ResponseEntity.ok(userService.updateUser(userDetails.getUserId(), request));
     }
 
+    public record EmailCodeRequest(
+            @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Email(message = "이메일 형식이 올바르지 않습니다")
+            @jakarta.validation.constraints.Size(max = 100) String email) {
+    }
+
+    public record EmailChangeRequest(
+            @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Email(message = "이메일 형식이 올바르지 않습니다")
+            @jakarta.validation.constraints.Size(max = 100) String email,
+            @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 10) String code) {
+    }
+
+    // 이메일 변경: 1) 새 이메일로 인증번호 받기
+    @PostMapping("/me/email/code")
+    public ResponseEntity<Void> sendEmailChangeCode(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                    @RequestBody @Valid EmailCodeRequest request) {
+        userService.sendEmailChangeCode(userDetails.getUserId(), request.email());
+        return ResponseEntity.noContent().build();
+    }
+
+    // 이메일 변경: 2) 인증번호 확인 후 변경
+    @PostMapping("/me/email")
+    public ResponseEntity<UserResponseDTO> changeEmail(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                                       @RequestBody @Valid EmailChangeRequest request) {
+        return ResponseEntity.ok(userService.changeEmail(userDetails.getUserId(), request.email(), request.code()));
+    }
+
     // 탈퇴
     @DeleteMapping("/me")
     public ResponseEntity<Void> deleteUser(@AuthenticationPrincipal CustomUserDetails userDetails) {

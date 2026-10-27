@@ -23,6 +23,7 @@ import java.util.Map;
 public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
+    private final com.untitles.domain.invitation.service.InvitationService invitationService;
 
     @PostMapping
     public ResponseEntity<WorkspaceResponse> create(
@@ -61,12 +62,23 @@ public class WorkspaceController {
     }
 
     // 멤버 관리
+    /**
+     * 예전 앱 버전 호환: 바로 멤버로 추가하던 API. 이제는 초대를 보내고, 상대가 수락해야 멤버가 된다.
+     * 새 버전은 POST /workspaces/{id}/invitations 를 쓴다.
+     */
     @PostMapping("/{workspaceId}/members")
     public ResponseEntity<WorkspaceMemberResponse> inviteMember(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long workspaceId,
             @RequestBody @Valid MemberInviteRequest request) {
-        return ResponseEntity.ok(workspaceService.inviteMember(userDetails.getUserId(), workspaceId, request));
+        var invitation = invitationService.invite(userDetails.getUserId(), workspaceId,
+                new com.untitles.domain.invitation.dto.InvitationCreateRequest(request.userId(), request.email(), request.role()));
+        return ResponseEntity.ok(WorkspaceMemberResponse.builder()
+                .userId(invitation.inviteeUserId())
+                .nickname(invitation.inviteeNickname())
+                .email(invitation.email())
+                .role(invitation.role())
+                .build());
     }
 
     @GetMapping("/{workspaceId}/members")

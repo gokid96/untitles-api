@@ -32,6 +32,8 @@ class UserServiceTest {
     @Mock private com.untitles.domain.auth.repository.SocialAccountRepository socialAccountRepository;
     @Mock private com.untitles.domain.auth.repository.PasswordResetRepository passwordResetRepository;
     @Mock private com.untitles.domain.auth.social.AppleAuthClient appleAuthClient;
+    @Mock private com.untitles.domain.invitation.repository.WorkspaceInvitationRepository invitationRepository;
+    @Mock private com.untitles.domain.email.service.EmailService emailService;
 
     @InjectMocks
     private UserService userService;
@@ -79,6 +81,35 @@ class UserServiceTest {
 
         assertThat(user.getProfileImage()).isNull();
         verify(imageService).deleteProfileImage("https://img/profiles/7/old.png", 7L);
+    }
+
+    @Test
+    @DisplayName("이메일은 인증 없이 바꾸거나 지울 수 없다 (예전 앱의 내 정보 저장)")
+    void rejectsUnverifiedEmailChange() {
+        Users me = Users.builder().userId(7L).nickname("테스터").email("me@example.com").build();
+        when(userRepository.findById(7L)).thenReturn(Optional.of(me));
+
+        assertThatThrownBy(() -> userService.updateUser(7L, UserUpdateRequestDTO.builder().email("other@example.com").build()))
+                .extracting("errorCode").isEqualTo(ErrorCode.EMAIL_CHANGE_NEEDS_VERIFICATION);
+        assertThatThrownBy(() -> userService.updateUser(7L, UserUpdateRequestDTO.builder().email("").build()))
+                .extracting("errorCode").isEqualTo(ErrorCode.EMAIL_CHANGE_NEEDS_VERIFICATION);
+        // 그대로 보내는 것은 괜찮다
+        userService.updateUser(7L, UserUpdateRequestDTO.builder().email("ME@example.com").nickname("테스터").build());
+        org.assertj.core.api.Assertions.assertThat(me.getEmail()).isEqualTo("me@example.com");
+    }
+
+    @Test
+    @DisplayName("인증번호를 확인하면 이메일을 바꾸고 확인된 것으로 표시한다")
+    void changeEmailWithCode() {
+        Users me = Users.builder().userId(7L).nickname("테스터").email("me@example.com").build();
+        when(userRepository.findById(7L)).thenReturn(Optional.of(me));
+        when(userRepository.findByEmailIgnoreCase("new@example.com")).thenReturn(Optional.empty());
+
+        userService.changeEmail(7L, "new@example.com", "123456");
+
+        verify(emailService).verifyCode("new@example.com", "123456");
+        org.assertj.core.api.Assertions.assertThat(me.getEmail()).isEqualTo("new@example.com");
+        org.assertj.core.api.Assertions.assertThat(me.isEmailVerified()).isTrue();
     }
 
     @Test
