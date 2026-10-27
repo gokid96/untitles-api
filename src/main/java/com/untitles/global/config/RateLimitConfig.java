@@ -69,6 +69,12 @@ public class RateLimitConfig {
      * 이메일 발송 API용 Bucket 생성 (매우 엄격한 제한)
      * 시간당 5회 제한
      */
+    /** 워크스페이스 초대: 초대 메일이 나가므로 IP당 시간에 20번 (취소·재초대를 반복한 메일 폭탄 방지) */
+    public static Bucket createInviteBucket() {
+        Bandwidth limit = Bandwidth.classic(20, Refill.greedy(20, Duration.ofHours(1)));
+        return Bucket.builder().addLimit(limit).build();
+    }
+
     public static Bucket createEmailBucket() {
         Bandwidth limit = Bandwidth.classic(5, Refill.greedy(5, Duration.ofHours(1)));
         return Bucket.builder().addLimit(limit).build();

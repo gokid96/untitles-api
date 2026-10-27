@@ -12,8 +12,11 @@ public final class CollabDtos {
     public record AccessResponse(boolean canRead, boolean canWrite) {
     }
 
-    /** 문서 불러오기. ydoc은 유효한 저장 상태가 있을 때만 (Base64) */
-    public record DocumentResponse(String title, String content, String hash, String ydoc) {
+    /**
+     * 문서 불러오기. ydoc은 저장된 편집 상태(Base64, 없으면 null).
+     * stale이면 그 상태 이후 다른 경로로 바뀐 것이므로 편집 서버가 title·content를 그 위에 반영해야 한다
+     */
+    public record DocumentResponse(String title, String content, String hash, String ydoc, boolean stale) {
     }
 
     /** 문서 저장. baseHash는 편집 서버가 마지막으로 알고 있던 해시 */

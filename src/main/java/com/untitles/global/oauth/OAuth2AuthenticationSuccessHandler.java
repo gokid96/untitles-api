@@ -34,13 +34,15 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
         boolean app = OAuthTarget.isApp(request);
         boolean link = OAuthTarget.isLinkMode(request);
+        String clientState = OAuthTarget.clientState(request);
         OAuthTarget.clear(request, response);
+        String stateParam = clientState != null ? "&state=" + clientState : "";
 
         if (link) {
             // 내 정보에서 연결하기: 이미 로그인한 상태이므로 코드 없이 연결 결과만 알린다
             Object provider = request.getAttribute(CustomOAuth2UserService.LINKED_PROVIDER_ATTRIBUTE);
             String base = app ? socialProperties.appRedirectUri() : redirectUri + "/oauth/callback";
-            getRedirectStrategy().sendRedirect(request, response, base + "?linked=" + provider);
+            getRedirectStrategy().sendRedirect(request, response, base + "?linked=" + provider + stateParam);
             return;
         }
 
@@ -49,6 +51,6 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         log.info("OAuth2 로그인 성공: userId={} ({})", oAuth2User.getUserId(), app ? "app" : "web");
 
         String base = app ? socialProperties.appRedirectUri() : redirectUri + "/oauth/callback";
-        getRedirectStrategy().sendRedirect(request, response, base + "?code=" + code);
+        getRedirectStrategy().sendRedirect(request, response, base + "?code=" + code + stateParam);
     }
 }

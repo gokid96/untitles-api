@@ -26,6 +26,8 @@ const server = new Server({
   debounce: 2000,
   maxDebounce: 10000,
   quiet: true,
+  // 메시지 하나의 최대 크기 (기본 100MB는 너무 커서 메모리를 쉽게 잡아먹을 수 있다). 노트 저장 한도(약 0.5MB)보다 넉넉하게
+  websocketOptions: { maxPayload: 8 * 1024 * 1024 },
   ...handlers,
 })
 

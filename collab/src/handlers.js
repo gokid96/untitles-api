@@ -81,6 +81,8 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
   const baseHashes = new Map()
   // 문서별로 마지막으로 DB와 맞춘 제목·본문 (다른 경로의 수정과 합칠 때 기준)
   const baseContents = new Map()
+  // DB 저장이 실패한 문서 (다시 성공하면 알려 준다)
+  const storeFailed = new Set()
 
   async function call(path, init = {}) {
     const res = await fetchImpl(`${apiUrl}/internal/collab${path}`, {
@@ -127,6 +129,7 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
     if (status === 200) {
       baseHashes.set(documentName, body.hash)
       baseContents.set(documentName, { title: body.title, content: body.content })
+      if (storeFailed.delete(documentName)) notifyClients(document, { type: 'store-ok' })
     } else if (status === 409 && body) {
       absorbExternal(documentName, document, body)
       // 합친 결과를 바로 저장 (합친 결과가 실시간 편집 내용과 같아 문서 변경이 없을 때도 DB를 맞춘다)
@@ -134,8 +137,15 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
     } else if (status === 404) {
       log.warn(`[collab] ${documentName}: 노트가 없어 저장하지 않습니다 (삭제됨)`)
     } else {
+      // 편집 중인 사람들에게 저장이 안 되고 있음을 알린다 (화면에 "저장됨"으로 계속 보이지 않게)
+      storeFailed.add(documentName)
+      notifyClients(document, { type: 'store-error', reason: status === 400 ? 'too-large' : 'failed' })
       throw new Error(`[collab] ${documentName}: 저장 실패 (${status})`)
     }
+  }
+
+  function notifyClients(document, message) {
+    document.broadcastStateless?.(JSON.stringify(message))
   }
 
   /** 알림을 받으면 열려 있는 노트 문서에 DB의 새 내용을 바로 반영한다 */
@@ -180,13 +190,16 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
       if (status !== 200) throw new Error(`노트를 불러오지 못함 (${status})`)
 
       if (body.ydoc) {
+        // 저장된 편집 상태를 이어서 쓴다 (새로 만들면 예전 상태를 들고 다시 연결한 사람의 본문이 중복된다)
         Y.applyUpdate(document, Buffer.from(body.ydoc, 'base64'))
+        // 그 뒤 다른 경로로 바뀌었으면 바뀐 부분만 반영
+        if (body.stale) fillFromHtml(document, body.title, body.content, 'load')
       } else {
-        // 아직 실시간 편집 상태가 없거나, 다른 경로로 바뀐 노트: HTML에서 새로 만든다
+        // 처음 실시간 편집으로 여는 노트: HTML에서 만든다
         fillFromHtml(document, body.title, body.content, 'load')
       }
       baseHashes.set(documentName, body.hash)
-      baseContents.set(documentName, readDocument(document))
+      baseContents.set(documentName, body.stale || !body.ydoc ? { title: body.title, content: body.content } : readDocument(document))
       return document
     },
 
@@ -251,6 +264,14 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
             .forEach((connection) => connection.close())
         })
       }
+      // 멤버에서 빠진 사람은 알림 채널도 끊는다 (알림을 받을 시간을 조금 준 뒤). 권한만 바뀐 경우엔 다시 연결된다
+      if (Number.isInteger(kickUserId) && kickUserId > 0) {
+        setTimeout(() => {
+          instance.documents.get(`workspace:${workspaceId}`)?.getConnections()
+            .filter((connection) => Number(connection.context?.userId) === kickUserId)
+            .forEach((connection) => connection.close())
+        }, 1500).unref?.()
+      }
       reply(204)
       throw null
     },
@@ -258,6 +279,7 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
     async afterUnloadDocument({ documentName }) {
       baseHashes.delete(documentName)
       baseContents.delete(documentName)
+      storeFailed.delete(documentName)
     },
   }
 }

@@ -18,6 +18,9 @@ public final class OAuthTarget {
 
     static final String COOKIE = "oauth_target";
     static final String LINK_COOKIE = "oauth_link";
+    // 웹이 로그인을 시작할 때 만든 무작위 값. 끝나고 돌아갈 때 그대로 돌려줘서, 웹이 자기가 시작한 로그인인지 확인한다 (로그인 위조 방지)
+    static final String STATE_COOKIE = "oauth_cstate";
+    private static final String TOKEN_PATTERN = "[A-Za-z0-9_-]{16,128}";
     /** 이번 요청이 "내 정보에서 연결하기"였는지 (성공·실패 처리기가 돌아갈 곳을 고르는 데 씀) */
     public static final String LINK_MODE_ATTRIBUTE = "untitles.oauth.linkMode";
 
@@ -43,6 +46,16 @@ public final class OAuthTarget {
         return null;
     }
 
+    /** 웹이 보낸 로그인 확인값 (없으면 null) */
+    public static String clientState(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) return null;
+        for (Cookie cookie : cookies) {
+            if (STATE_COOKIE.equals(cookie.getName()) && cookie.getValue().matches(TOKEN_PATTERN)) return cookie.getValue();
+        }
+        return null;
+    }
+
     public static boolean isLinkMode(HttpServletRequest request) {
         return Boolean.TRUE.equals(request.getAttribute(LINK_MODE_ATTRIBUTE)) || linkIntent(request) != null;
     }
@@ -50,6 +63,7 @@ public final class OAuthTarget {
     public static void clear(HttpServletRequest request, HttpServletResponse response) {
         response.addHeader("Set-Cookie", cookie(request, COOKIE, "", 0).toString());
         response.addHeader("Set-Cookie", cookie(request, LINK_COOKIE, "", 0).toString());
+        response.addHeader("Set-Cookie", cookie(request, STATE_COOKIE, "", 0).toString());
     }
 
     private static ResponseCookie cookie(HttpServletRequest request, String name, String value, long maxAge) {
@@ -78,6 +92,9 @@ public final class OAuthTarget {
             String link = request.getParameter("link");
             boolean hasLink = link != null && link.matches("[A-Za-z0-9_-]{16,64}");
             response.addHeader("Set-Cookie", cookie(request, LINK_COOKIE, hasLink ? link : "", hasLink ? 600 : 0).toString());
+            String state = request.getParameter("client_state");
+            boolean hasState = state != null && state.matches(TOKEN_PATTERN);
+            response.addHeader("Set-Cookie", cookie(request, STATE_COOKIE, hasState ? state : "", hasState ? 600 : 0).toString());
             chain.doFilter(request, response);
         }
     }

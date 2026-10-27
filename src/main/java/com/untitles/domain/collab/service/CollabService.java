@@ -69,11 +69,12 @@ public class CollabService {
     public DocumentResponse load(Long workspaceId, Long postId) {
         Post post = findPost(workspaceId, postId);
         String hash = hashOf(post);
-        String ydoc = stateRepository.findById(postId)
-                .filter(state -> state.getContentHash().equals(hash))
-                .map(state -> Base64.getEncoder().encodeToString(state.getYdoc()))
-                .orElse(null);
-        return new DocumentResponse(post.getTitle(), post.getContent(), hash, ydoc);
+        // 저장된 편집 상태는 다른 경로로 바뀌었어도(stale) 그대로 준다. 편집 서버가 그 위에 바뀐 부분만 반영해야
+        // 예전 상태를 들고 있던 사람이 다시 연결될 때 본문이 중복되지 않는다
+        var state = stateRepository.findById(postId);
+        String ydoc = state.map(s -> Base64.getEncoder().encodeToString(s.getYdoc())).orElse(null);
+        boolean stale = state.map(s -> !s.getContentHash().equals(hash)).orElse(false);
+        return new DocumentResponse(post.getTitle(), post.getContent(), hash, ydoc, stale);
     }
 
     // 입력 중 2~10초마다 불리므로 캐시는 실제로 바뀌었을 때만 비운다 (@EvictWorkspaceCaches를 쓰지 않음)

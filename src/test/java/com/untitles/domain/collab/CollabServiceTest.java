@@ -101,7 +101,7 @@ class CollabServiceTest {
     }
 
     @Test
-    @DisplayName("다른 경로로 노트가 바뀌면 저장을 거부(409)하고, 저장된 Y 상태도 더는 쓰지 않는다")
+    @DisplayName("다른 경로로 노트가 바뀌면 저장을 거부(409)하고, 불러올 때 저장된 상태가 오래됐다고(stale) 알린다")
     void staleBase() {
         DocumentResponse loaded = collabService.load(ws.getWorkspaceId(), post.getPostId());
         collabService.store(ws.getWorkspaceId(), post.getPostId(), "제목", "<p>본문</p>", YDOC, loaded.hash());
@@ -114,7 +114,9 @@ class CollabServiceTest {
         postRepository.saveAndFlush(p);
 
         DocumentResponse reloaded = collabService.load(ws.getWorkspaceId(), post.getPostId());
-        assertThat(reloaded.ydoc()).isNull();  // HTML에서 다시 만들게 함
+        // 저장된 상태는 그대로 주되 stale로 알려, 편집 서버가 그 위에 바뀐 부분만 반영하게 함 (본문 중복 방지)
+        assertThat(reloaded.ydoc()).isNotNull();
+        assertThat(reloaded.stale()).isTrue();
         assertThatThrownBy(() -> collabService.store(ws.getWorkspaceId(), post.getPostId(), "제목", "<p>실시간</p>", YDOC, loaded.hash()))
                 .isInstanceOf(CollabService.StaleBaseException.class)
                 .satisfies(e -> assertThat(((CollabService.StaleBaseException) e).getCurrent().content()).contains("예전 앱에서 고침"));

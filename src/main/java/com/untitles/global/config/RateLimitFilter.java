@@ -31,6 +31,7 @@ public class RateLimitFilter implements Filter {
     private static final String SIGNUP_PREFIX = "signup:";
     private static final String UPLOAD_PREFIX = "upload:";
     private static final String DEFAULT_PREFIX = "default:";
+    private static final String INVITE_PREFIX = "invite:";
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -48,7 +49,10 @@ public class RateLimitFilter implements Filter {
             return;
         }
 
-        Bucket bucket = resolveBucket(clientIp, path);
+        Bucket bucket = "POST".equalsIgnoreCase(httpRequest.getMethod())
+                && path.startsWith("/api/v1/workspaces/") && (path.endsWith("/invitations") || path.endsWith("/members"))
+                ? rateLimitBuckets.get(INVITE_PREFIX + clientIp, k -> RateLimitConfig.createInviteBucket())
+                : resolveBucket(clientIp, path);
 
         if (bucket.tryConsume(1)) {
             // 요청 허용

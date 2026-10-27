@@ -117,3 +117,22 @@ test('통째로 다시 쓰지 않고 바뀐 부분만 고친다 (다른 사람�
   assert.equal(readDocument(doc).content, '<p>하나</p><p>둘 바뀜</p>')
   assert.equal(readDocument(doc).title, '제목 바뀜')
 })
+
+test('다른 경로로 바뀐 뒤 예전 상태를 들고 다시 연결해도 본문이 중복되지 않는다', async () => {
+  const first = new Y.Doc()
+  let api = fakeApi([{ status: 200, body: { title: 't', content: '<p>하나</p><p>둘</p>', hash: 'h1', ydoc: null } }])
+  let h = createCollabHandlers({ apiUrl: 'http://api', secret: 's', jwtSecret: 'x'.repeat(64), fetchImpl: api.fetchImpl, log: { warn() {} } })
+  await h.onLoadDocument({ documentName: 'post:1:2', document: first })
+  const stored = Buffer.from(Y.encodeStateAsUpdate(first)).toString('base64')
+  const clientA = new Y.Doc()
+  Y.applyUpdate(clientA, Y.encodeStateAsUpdate(first)) // A가 들고 있는 상태
+
+  // A가 끊긴 사이 문서가 내려가고, 예전 앱이 일반 저장으로 고침
+  const second = new Y.Doc()
+  api = fakeApi([{ status: 200, body: { title: 't', content: '<p>하나</p><p>둘 (예전 앱)</p>', hash: 'h2', ydoc: stored, stale: true } }])
+  h = createCollabHandlers({ apiUrl: 'http://api', secret: 's', jwtSecret: 'x'.repeat(64), fetchImpl: api.fetchImpl, log: { warn() {} } })
+  await h.onLoadDocument({ documentName: 'post:1:2', document: second })
+  Y.applyUpdate(second, Y.encodeStateAsUpdate(clientA)) // A가 다시 연결
+
+  assert.equal(readDocument(second).content, '<p>하나</p><p>둘 (예전 앱)</p>')
+})
