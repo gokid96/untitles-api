@@ -15,9 +15,10 @@ public class UserUpdateRequestDTO {
     @Size(min = 2, max = 50, message = "닉네임은 2-50자여야 합니다")
     private String nickname;
 
-    private String currentPassword;  // 현재 비밀번호 (비밀번호 변경 시 필수)
+    private String currentPassword;  // 현재 비밀번호 (비밀번호 변경 시 필수, 소셜 가입으로 비밀번호가 없으면 생략)
 
-    @Size(min = 6, max = 20, message = "비밀번호는 6-20자여야 합니다")
+    @jakarta.validation.constraints.Pattern(regexp = com.untitles.global.util.PasswordPolicy.REGEX,
+            message = com.untitles.global.util.PasswordPolicy.MESSAGE)
     private String newPassword;  // 새 비밀번호
 
     @Size(max = 500)

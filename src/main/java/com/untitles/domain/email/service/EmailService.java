@@ -39,7 +39,7 @@ public class EmailService {
     @Transactional
     public void sendVerificationCode(String email) {
         // 이미 가입된 이메일인지 확인
-        if (userRepository.existsByEmail(email)) {
+        if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new BusinessException(ErrorCode.ALREADY_REGISTERED_EMAIL);
         }
 

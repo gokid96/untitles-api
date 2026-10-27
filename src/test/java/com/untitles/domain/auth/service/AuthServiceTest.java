@@ -4,8 +4,6 @@ import com.untitles.domain.email.service.EmailService;
 import com.untitles.domain.user.dto.request.UserCreateRequestDTO;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.user.repository.UserRepository;
-import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
-import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
@@ -28,10 +26,8 @@ class AuthServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private EmailService emailService;
-    @Mock private WorkspaceRepository workspaceRepository;
-    @Mock private WorkspaceMemberRepository workspaceMemberRepository;
+    @Mock private AccountSetupService accountSetupService;
     @Mock private RefreshTokenService refreshTokenService;
-    @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private AuthService authService;
@@ -71,7 +67,8 @@ class AuthServiceTest {
 
         assertThat(authService.signup(request)).isNotNull();
 
-        verify(emailService, never()).isVerified(any());
+        // 인증하지 않은 이메일은 저장하되 '확인된 이메일'로 표시하지 않는다
+        verify(userRepository).save(argThat(user -> !user.isEmailVerified()));
         verify(userRepository).save(any(Users.class));
     }
 
@@ -79,7 +76,7 @@ class AuthServiceTest {
     @DisplayName("이메일 인증을 꺼도 중복 이메일은 막는다")
     void duplicateEmailStillBlocked() {
         ReflectionTestUtils.setField(authService, "emailVerificationRequired", false);
-        when(userRepository.existsByEmail("user@example.com")).thenReturn(true);
+        when(userRepository.existsByEmailIgnoreCase("user@example.com")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.signup(request))
                 .extracting("errorCode").isEqualTo(ErrorCode.DUPLICATE_EMAIL);
@@ -100,7 +97,7 @@ class AuthServiceTest {
 
         authService.signup(noEmail);
 
-        verify(userRepository, never()).existsByEmail(any());
+        verify(userRepository, never()).existsByEmailIgnoreCase(any());
         verify(userRepository).save(argThat(user -> user.getEmail() == null));
         verify(emailService, never()).deleteVerification(any());
     }
@@ -148,5 +145,52 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.refresh("rt"))
                 .extracting("errorCode").isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN);
+    }
+
+    @Test
+    @DisplayName("이메일 가입(아이디 없음)은 인증 완료된 이메일이 있어야 하고, 이메일 확인된 계정으로 만든다")
+    void emailSignup() {
+        UserCreateRequestDTO emailOnly = UserCreateRequestDTO.builder()
+                .email("new@example.com").password("abcd1234").nickname("새사람").build();
+        when(emailService.isVerified("new@example.com")).thenReturn(true);
+        when(passwordEncoder.encode("abcd1234")).thenReturn("hashed");
+        when(userRepository.save(any(Users.class))).thenAnswer(inv -> {
+            Users user = inv.getArgument(0);
+            ReflectionTestUtils.setField(user, "userId", 2L);
+            return user;
+        });
+
+        authService.signup(emailOnly);
+
+        verify(userRepository).save(argThat(user -> user.getLoginId() == null && user.isEmailVerified()
+                && "new@example.com".equals(user.getEmail())));
+        verify(accountSetupService).setUp(any(Users.class));
+    }
+
+    @Test
+    @DisplayName("이메일 가입인데 인증하지 않았으면 막는다")
+    void emailSignupNeedsVerification() {
+        UserCreateRequestDTO emailOnly = UserCreateRequestDTO.builder()
+                .email("new@example.com").password("abcd1234").nickname("새사람").build();
+        when(emailService.isVerified("new@example.com")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.signup(emailOnly))
+                .extracting("errorCode").isEqualTo(ErrorCode.EMAIL_NOT_VERIFIED);
+    }
+
+    @Test
+    @DisplayName("이메일로도 로그인할 수 있고, 비밀번호가 없는 소셜 계정은 비밀번호 로그인이 안 된다")
+    void loginByEmail() {
+        Users user = Users.builder().userId(3L).email("me@example.com").password("hashed").nickname("나").build();
+        when(userRepository.findByEmailIgnoreCase("me@example.com")).thenReturn(java.util.Optional.of(user));
+        when(passwordEncoder.matches("abcd1234", "hashed")).thenReturn(true);
+
+        assertThat(authService.login(new com.untitles.domain.user.dto.request.UserLoginRequestDTO("me@example.com", "abcd1234")))
+                .isNotNull();
+
+        Users social = Users.builder().userId(4L).email("s@example.com").nickname("소셜").build();
+        when(userRepository.findByEmailIgnoreCase("s@example.com")).thenReturn(java.util.Optional.of(social));
+        assertThatThrownBy(() -> authService.login(new com.untitles.domain.user.dto.request.UserLoginRequestDTO("s@example.com", "whatever1")))
+                .isInstanceOf(org.springframework.security.authentication.BadCredentialsException.class);
     }
 }

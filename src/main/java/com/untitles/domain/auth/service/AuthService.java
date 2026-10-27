@@ -7,11 +7,6 @@ import com.untitles.domain.user.dto.request.UserCreateRequestDTO;
 import com.untitles.domain.user.dto.request.UserLoginRequestDTO;
 import com.untitles.domain.user.entity.Users;
 import com.untitles.domain.user.repository.UserRepository;
-import com.untitles.domain.onboarding.event.UserSignedUpEvent;
-import com.untitles.domain.workspace.entity.Workspace;
-import com.untitles.domain.workspace.entity.WorkspaceMember;
-import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
-import com.untitles.domain.workspace.repository.WorkspaceRepository;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -32,77 +27,76 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    private final WorkspaceRepository workspaceRepository;
-    private final WorkspaceMemberRepository workspaceMemberRepository;
-    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final AccountSetupService accountSetupService;
     private final RefreshTokenService refreshTokenService;
 
     @Value("${app.signup.email-verification-required:true}")
     private boolean emailVerificationRequired;
 
+    private static final String LOGIN_FAILED = "이메일(아이디) 또는 비밀번호가 올바르지 않습니다.";
+
     /**
-     * 로그인 - JWT 발급
+     * 로그인 - 이메일 또는 (예전에 만든) 아이디 + 비밀번호
      */
     public LoginResponse login(UserLoginRequestDTO request) {
-        Users user = userRepository.findByLoginId(request.getLoginId())
-                .orElseThrow(() -> new UsernameNotFoundException("아이디가 존재하지 않습니다."));
+        String id = request.getLoginId().trim();
+        Users user = (id.contains("@") ? userRepository.findByEmailIgnoreCase(id) : userRepository.findByLoginId(id))
+                .orElseThrow(() -> new UsernameNotFoundException(LOGIN_FAILED));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new BadCredentialsException("비밀번호가 일치하지 않습니다.");
+        // 소셜 로그인으로만 가입한 계정은 비밀번호가 없다
+        if (!user.hasPassword() || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new BadCredentialsException(LOGIN_FAILED);
         }
 
         TokenResponse tokens = refreshTokenService.issue(user.getUserId(), user.getLoginId());
-
-        log.info("로그인 성공: {}", user.getLoginId());
-
+        log.info("로그인 성공: userId={}", user.getUserId());
         return LoginResponse.of(user.getUserId(), user.getLoginId(), user.getNickname(),
                 tokens.accessToken(), tokens.refreshToken());
     }
 
     /**
-     * 회원가입 후 자동 로그인 - JWT 발급
+     * 회원가입 후 자동 로그인
+     * - 이메일 가입(현재 방식): 이메일 인증 코드 확인 필수, 아이디 없음
+     * - 아이디 가입(예전 앱 버전 호환): 아이디 필수, 이메일 선택
      */
     @Transactional
     public LoginResponse signup(UserCreateRequestDTO request) {
         String email = StringUtils.hasText(request.getEmail()) ? request.getEmail().trim() : null;
+        boolean legacy = StringUtils.hasText(request.getLoginId());
 
-        if (emailVerificationRequired && (email == null || !emailService.isVerified(email))) {
+        if (!legacy) {
+            if (email == null) throw new BusinessException(ErrorCode.INVALID_INPUT);
+            if (!emailService.isVerified(email)) throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
+        } else if (emailVerificationRequired && (email == null || !emailService.isVerified(email))) {
             throw new BusinessException(ErrorCode.EMAIL_NOT_VERIFIED);
         }
-        if (email != null && userRepository.existsByEmail(email)) {
+        if (email != null && userRepository.existsByEmailIgnoreCase(email)) {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
-        if (userRepository.existsByLoginId(request.getLoginId())) {
+        if (legacy && userRepository.existsByLoginId(request.getLoginId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
         if (userRepository.existsByNickname(request.getNickname())) {
             throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
-        Users user = Users.createLocal(
-                email,
-                request.getLoginId(),
-                passwordEncoder.encode(request.getPassword()),
-                request.getNickname()
-        );
+        String encoded = passwordEncoder.encode(request.getPassword());
+        Users user = legacy
+                ? Users.createLocal(email, request.getLoginId(), encoded, request.getNickname())
+                : Users.createWithEmail(email, encoded, request.getNickname());
+        if (legacy && email != null && emailService.isVerified(email)) {
+            user.markEmailVerified();
+        }
 
         Users savedUser = userRepository.save(user);
-
-        Workspace personalWorkspace = Workspace.createPersonal();
-        workspaceRepository.save(personalWorkspace);
-
-        WorkspaceMember owner = WorkspaceMember.createOwner(personalWorkspace, savedUser);
-        workspaceMemberRepository.save(owner);
-        eventPublisher.publishEvent(new UserSignedUpEvent(savedUser.getUserId(), personalWorkspace.getWorkspaceId()));
+        accountSetupService.setUp(savedUser);
 
         if (email != null) {
             emailService.deleteVerification(email);
         }
 
         TokenResponse tokens = refreshTokenService.issue(savedUser.getUserId(), savedUser.getLoginId());
-
-        log.info("회원가입 성공: {}", savedUser.getLoginId());
-
+        log.info("회원가입 성공: userId={} ({})", savedUser.getUserId(), legacy ? "아이디" : "이메일");
         return LoginResponse.of(savedUser.getUserId(), savedUser.getLoginId(), savedUser.getNickname(),
                 tokens.accessToken(), tokens.refreshToken());
     }

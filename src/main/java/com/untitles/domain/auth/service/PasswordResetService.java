@@ -67,6 +67,7 @@ public class PasswordResetService {
         }
 
         user.updatePassword(passwordEncoder.encode(newPassword));
+        user.markEmailVerified();  // 메일로 받은 코드를 입력했으니 이메일 소유가 확인됨
         passwordResetRepository.delete(reset);
         refreshTokenService.revokeAll(user.getUserId());  // 다른 기기의 로그인도 끊는다
         log.info("비밀번호 재설정 완료: userId={}", user.getUserId());

@@ -42,7 +42,7 @@ class EmailServiceTest {
     @Test
     @DisplayName("이미 가입된 이메일로는 인증번호를 보내지 않는다")
     void sendToRegisteredEmail() {
-        when(userRepository.existsByEmail(EMAIL)).thenReturn(true);
+        when(userRepository.existsByEmailIgnoreCase(EMAIL)).thenReturn(true);
 
         assertThatThrownBy(() -> emailService.sendVerificationCode(EMAIL))
                 .isInstanceOf(BusinessException.class)
@@ -55,7 +55,7 @@ class EmailServiceTest {
     @Test
     @DisplayName("재발송하면 기존 인증 데이터를 지우고 새로 저장한다")
     void resendReplacesPreviousCode() {
-        when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase(EMAIL)).thenReturn(false);
 
         emailService.sendVerificationCode(EMAIL);
 
@@ -68,7 +68,7 @@ class EmailServiceTest {
     @Test
     @DisplayName("인증번호는 항상 6자리 숫자다")
     void codeIsSixDigits() {
-        when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase(EMAIL)).thenReturn(false);
 
         emailService.sendVerificationCode(EMAIL);
 
