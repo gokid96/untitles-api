@@ -12,6 +12,7 @@ public record WorkspaceMemberResponse(
         Long userId,
         String email,
         String nickname,
+        String profileImage,
         WorkspaceRole role,
         LocalDateTime joinedAt
 ) {
@@ -21,6 +22,7 @@ public record WorkspaceMemberResponse(
                 .userId(member.getUser().getUserId())
                 .email(member.getUser().getEmail())
                 .nickname(member.getUser().getNickname())
+                .profileImage(member.getUser().getProfileImage())
                 .role(member.getRole())
                 .joinedAt(member.getJoinedAt())
                 .build();

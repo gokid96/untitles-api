@@ -11,4 +11,12 @@ import com.untitles.domain.user.entity.AuthProvider;
  */
 public record SocialProfile(AuthProvider provider, String subject, String email, boolean emailVerified,
                             String nickname, String profileImage) {
+
+    /** 프로필 사진 주소. https 페이지에서 깨지지 않도록 http는 https로 (카카오는 http 주소를 주기도 함) */
+    public String safeProfileImage() {
+        if (profileImage == null || profileImage.isBlank()) return null;
+        String url = profileImage.trim();
+        if (url.startsWith("http://")) url = "https://" + url.substring("http://".length());
+        return url.startsWith("https://") && url.length() <= 500 ? url : null;
+    }
 }

@@ -89,7 +89,7 @@ public class SocialLoginService {
         }
 
         Users user = userRepository.save(Users.createSocial(email,
-                accountSetupService.uniqueNickname(profile.nickname()), profile.profileImage()));
+                accountSetupService.uniqueNickname(profile.nickname()), profile.safeProfileImage()));
         accountSetupService.setUp(user);
         SocialAccount account = socialAccountRepository.save(
                 SocialAccount.of(user.getUserId(), profile.provider(), profile.subject(), email));

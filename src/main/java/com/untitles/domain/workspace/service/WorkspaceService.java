@@ -41,6 +41,7 @@ public class WorkspaceService {
     private final WorkspaceMemberHelper workspaceMemberHelper;
     private final PostLinkRepository postLinkRepository;
     private final com.untitles.domain.invitation.repository.WorkspaceInvitationRepository invitationRepository;
+    private final com.untitles.domain.collab.live.WorkspaceLiveNotifier liveNotifier;
 
     // 워크스페이스 생성
     @Transactional
@@ -168,6 +169,8 @@ public class WorkspaceService {
 
         target.updateRole(request.role());
         workspaceMemberRepository.save(target);
+        // 바뀐 권한(예: 뷰어)으로 다시 접속하도록 그 사람의 노트 편집 연결을 끊는다
+        notifyMembers(workspaceId, userId, target.getUser().getUserId(), true);
         return WorkspaceMemberResponse.from(target);
     }
 
@@ -188,7 +191,9 @@ public class WorkspaceService {
             throw new BusinessException(ErrorCode.CANNOT_MODIFY_HIGHER_ROLE);
         }
 
+        Long targetUserId = target.getUser().getUserId();
         workspaceMemberRepository.delete(target);
+        notifyMembers(workspaceId, userId, targetUserId, true);
     }
 
     // 워크스페이스 나가기
@@ -201,6 +206,14 @@ public class WorkspaceService {
         }
 
         workspaceMemberRepository.delete(member);
+        notifyMembers(workspaceId, userId, userId, true);
+    }
+
+    private void notifyMembers(Long workspaceId, Long actorId, Long targetUserId, boolean disconnect) {
+        java.util.Map<String, Long> ids = new java.util.HashMap<>();
+        ids.put("targetUserId", targetUserId);
+        if (disconnect) ids.put("disconnectUserId", targetUserId);
+        liveNotifier.notify(workspaceId, "members", actorId, ids);
     }
 
     public int getTeamWorkspaceCount(Long userId) {

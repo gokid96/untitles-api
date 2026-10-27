@@ -78,7 +78,8 @@ class WorkspaceServiceTest {
                 folderRepository,
                 new WorkspaceMemberHelper(memberRepository),
                 postLinkRepository,
-                org.mockito.Mockito.mock(com.untitles.domain.invitation.repository.WorkspaceInvitationRepository.class)
+                org.mockito.Mockito.mock(com.untitles.domain.invitation.repository.WorkspaceInvitationRepository.class),
+                org.mockito.Mockito.mock(com.untitles.domain.collab.live.WorkspaceLiveNotifier.class)
         );
 
         // 테스트 유저 생성

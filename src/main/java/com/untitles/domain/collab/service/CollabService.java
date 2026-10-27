@@ -38,6 +38,7 @@ public class CollabService {
     private final WorkspaceMemberRepository memberRepository;
     private final PostLinkService postLinkService;
     private final HtmlSanitizer htmlSanitizer;
+    private final com.untitles.domain.collab.live.WorkspaceLiveNotifier liveNotifier;
 
     /** 저장 시 baseHash가 현재 DB와 다를 때 (다른 경로로 바뀜) */
     public static class StaleBaseException extends RuntimeException {
@@ -55,7 +56,8 @@ public class CollabService {
 
     @Transactional(readOnly = true)
     public AccessResponse access(Long userId, Long workspaceId, Long postId) {
-        if (postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId).isEmpty()) {
+        // postId가 없으면 워크스페이스 변경 알림 채널: 멤버인지만 본다
+        if (postId != null && postRepository.findByPostIdAndWorkspaceWorkspaceId(postId, workspaceId).isEmpty()) {
             return new AccessResponse(false, false);
         }
         return memberRepository.findByWorkspaceWorkspaceIdAndUserUserId(workspaceId, userId)
@@ -94,11 +96,17 @@ public class CollabService {
 
         String sanitized = htmlSanitizer.sanitize(safeContent);
         if (sanitized == null) sanitized = "";
-        if (!safeTitle.equals(post.getTitle()) || !sanitized.equals(post.getContent())) {
+        boolean titleChanged = !safeTitle.equals(post.getTitle());
+        if (titleChanged || !sanitized.equals(post.getContent())) {
             post.updateTitle(safeTitle);
             post.updateContent(sanitized);
             postLinkService.syncLinks(post);
             postRepository.saveAndFlush(post);  // 버전이 올라가 예전 방식으로 편집 중인 기기는 충돌로 감지한다
+        }
+
+        if (titleChanged) {
+            // 다른 사람들의 노트 목록에도 바뀐 제목이 보이도록
+            liveNotifier.notify(workspaceId, "updatePost", null, java.util.Map.of("postId", postId));
         }
 
         String newHash = hashOf(post);

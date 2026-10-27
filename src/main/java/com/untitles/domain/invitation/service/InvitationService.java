@@ -51,6 +51,7 @@ public class InvitationService {
     private final UserRepository userRepository;
     private final WorkspaceMemberHelper memberHelper;
     private final EmailSender emailSender;
+    private final com.untitles.domain.collab.live.WorkspaceLiveNotifier liveNotifier;
 
     @Value("${app.oauth2.redirect-uri:http://localhost:5173}")
     private String webBaseUrl;
@@ -172,6 +173,7 @@ public class InvitationService {
             memberRepository.save(WorkspaceMember.createMember(workspace, user, invitation.getRole()));
         }
         invitationRepository.delete(invitation);
+        liveNotifier.notify(workspace.getWorkspaceId(), "members", userId, java.util.Map.of("targetUserId", userId));
         log.info("초대 수락: workspaceId={}, userId={}", workspace.getWorkspaceId(), userId);
         return workspace.getWorkspaceId();
     }

@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @H2JpaTest
-@Import({CollabService.class, PostLinkService.class, HtmlSanitizer.class, WorkspaceMemberHelper.class})
+@Import({CollabService.class, PostLinkService.class, HtmlSanitizer.class, WorkspaceMemberHelper.class, com.untitles.domain.collab.live.WorkspaceLiveNotifier.class})
 class CollabServiceTest {
 
     @Autowired CollabService collabService;

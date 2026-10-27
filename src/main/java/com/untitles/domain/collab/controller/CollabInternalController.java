@@ -33,7 +33,7 @@ public class CollabInternalController {
     public ResponseEntity<AccessResponse> access(@RequestHeader(value = "X-Collab-Secret", required = false) String header,
                                                  @RequestParam Long userId,
                                                  @RequestParam Long workspaceId,
-                                                 @RequestParam Long postId) {
+                                                 @RequestParam(required = false) Long postId) {
         if (!authorized(header)) return ResponseEntity.notFound().build();
         return ResponseEntity.ok(collabService.access(userId, workspaceId, postId));
     }

@@ -45,6 +45,10 @@ public class SocialLinkService {
         String email = profile.emailVerified() ? profile.email() : null;
         SocialAccount account = socialAccountRepository.save(
                 SocialAccount.of(userId, profile.provider(), profile.subject(), email));
+        // 프로필 사진이 없으면 연결한 계정의 사진을 기본으로 쓴다 (이미 있으면 그대로 둔다)
+        if (user.getProfileImage() == null && profile.safeProfileImage() != null) {
+            user.updateProfileImage(profile.safeProfileImage());
+        }
         // 제공자가 확인한 이메일이 내 이메일과 같으면 내 이메일도 확인된 것으로
         if (email != null && user.getEmail() != null && user.getEmail().equalsIgnoreCase(email)) {
             user.markEmailVerified();

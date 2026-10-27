@@ -6,11 +6,35 @@ import { mergeNote } from './merge.js'
 
 export const FIELD = 'default' // Tiptap Collaboration 확장의 기본 필드
 const DOC_NAME = /^post:(\d+):(\d+)$/
+// 워크스페이스 변경 알림 채널 (내용 없음, 알림만 주고받는다)
+const WORKSPACE_NAME = /^workspace:(\d+)$/
 
 export function parseDocumentName(name) {
   const match = DOC_NAME.exec(name || '')
-  if (!match) return null
-  return { workspaceId: Number(match[1]), postId: Number(match[2]) }
+  if (match) return { workspaceId: Number(match[1]), postId: Number(match[2]) }
+  const ws = WORKSPACE_NAME.exec(name || '')
+  if (ws) return { workspaceId: Number(ws[1]), postId: null, channel: true }
+  return null
+}
+
+const MAX_NOTIFY_BODY = 4096
+
+function readBody(request) {
+  return new Promise((resolve, reject) => {
+    let size = 0
+    const chunks = []
+    request.on('data', (chunk) => {
+      size += chunk.length
+      if (size > MAX_NOTIFY_BODY) {
+        reject(new Error('too large'))
+        request.destroy()
+        return
+      }
+      chunks.push(chunk)
+    })
+    request.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
+    request.on('error', reject)
+  })
 }
 
 /** HTML과 제목으로 Y 문서 내용을 채운다 (기존 내용은 지운다) */
@@ -64,15 +88,17 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
         throw new Error('인증 실패')
       }
 
-      const { status, body } = await call(
-        `/access?userId=${userId}&workspaceId=${target.workspaceId}&postId=${target.postId}`)
+      const query = `userId=${userId}&workspaceId=${target.workspaceId}` + (target.channel ? '' : `&postId=${target.postId}`)
+      const { status, body } = await call(`/access?${query}`)
       if (status !== 200 || !body?.canRead) throw new Error('권한 없음')
-      if (!body.canWrite) connectionConfig.readOnly = true
-      return { userId }
+      // 알림 채널은 받기만 한다
+      if (!body.canWrite || target.channel) connectionConfig.readOnly = true
+      return { userId, workspaceId: target.workspaceId }
     },
 
     async onLoadDocument({ documentName, document }) {
-      const { workspaceId, postId } = parseDocumentName(documentName)
+      const { workspaceId, postId, channel } = parseDocumentName(documentName)
+      if (channel) return document
       const { status, body } = await call(`/workspaces/${workspaceId}/posts/${postId}`)
       if (status !== 200) throw new Error(`노트를 불러오지 못함 (${status})`)
 
@@ -88,7 +114,8 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
     },
 
     async onStoreDocument({ documentName, document }) {
-      const { workspaceId, postId } = parseDocumentName(documentName)
+      const { workspaceId, postId, channel } = parseDocumentName(documentName)
+      if (channel) return
       const { title, content } = readDocument(document)
       const { status, body } = await call(`/workspaces/${workspaceId}/posts/${postId}`, {
         method: 'PUT',
@@ -117,6 +144,58 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
       } else {
         throw new Error(`[collab] ${documentName}: 저장 실패 (${status})`)
       }
+    },
+
+    /**
+     * API → 편집 서버: 워크스페이스 변경 알림 (POST /internal/notify, 공유 비밀값 필요).
+     * 그 워크스페이스 채널을 보고 있는 사람들에게 그대로 전달하고,
+     * 멤버에서 빠졌거나 권한이 바뀐 사람(disconnectUserId)의 노트 편집 연결은 끊어 다시 권한을 확인하게 한다.
+     */
+    async onRequest({ request, response, instance }) {
+      const path = (request.url || '').split('?')[0]
+      if (path !== '/internal/notify') return // 기본 응답
+      const reply = (code) => {
+        response.writeHead(code, { 'Content-Type': 'text/plain' })
+        response.end(String(code))
+      }
+      if (request.method !== 'POST' || request.headers['x-collab-secret'] !== secret) {
+        reply(404)
+        throw null // 기본 응답을 막는다
+      }
+      let payload
+      try {
+        payload = JSON.parse(await readBody(request))
+      } catch {
+        reply(400)
+        throw null
+      }
+      const workspaceId = Number(payload?.workspaceId)
+      if (!Number.isInteger(workspaceId) || workspaceId <= 0) {
+        reply(400)
+        throw null
+      }
+      const message = JSON.stringify({
+        type: 'workspace-change',
+        action: String(payload.action || 'change').slice(0, 40),
+        actorId: payload.actorId ?? null,
+        postId: payload.postId ?? null,
+        folderId: payload.folderId ?? null,
+        targetUserId: payload.targetUserId ?? null,
+      })
+      instance.documents.get(`workspace:${workspaceId}`)?.broadcastStateless(message)
+
+      const kickUserId = Number(payload.disconnectUserId)
+      if (Number.isInteger(kickUserId) && kickUserId > 0) {
+        const prefix = `post:${workspaceId}:`
+        instance.documents.forEach((document, name) => {
+          if (!name.startsWith(prefix)) return
+          document.getConnections()
+            .filter((connection) => Number(connection.context?.userId) === kickUserId)
+            .forEach((connection) => connection.close())
+        })
+      }
+      reply(204)
+      throw null
     },
 
     async afterUnloadDocument({ documentName }) {

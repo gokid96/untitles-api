@@ -34,6 +34,7 @@ class InvitationServiceTest {
     @Autowired WorkspaceMemberRepository memberRepository;
     @Autowired WorkspaceInvitationRepository invitationRepository;
     @MockitoBean EmailSender emailSender;
+    @MockitoBean com.untitles.domain.collab.live.WorkspaceLiveNotifier liveNotifier;
 
     Users owner;
     Users friend;
