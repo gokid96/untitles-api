@@ -50,7 +50,10 @@ public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationF
         boolean app = OAuthTarget.isApp(request);
         OAuthTarget.clear(request, response);
         String base = app ? socialProperties.appRedirectUri() : redirectUri + "/login";
-        getRedirectStrategy().sendRedirect(request, response,
-                base + "?error=" + encodedMessage + "&error_code=" + encodedCode);
+        String target = exception instanceof CustomOAuth2UserService.SocialLinkRequiredAuthException link
+                // 같은 이메일의 기존 계정: 이메일 로그인 화면으로 (로그인하면 소셜 계정이 연결됨)
+                ? base + "?link=" + URLEncoder.encode(link.getLinkToken(), StandardCharsets.UTF_8) + "&error_code=" + encodedCode
+                : base + "?error=" + encodedMessage + "&error_code=" + encodedCode;
+        getRedirectStrategy().sendRedirect(request, response, target);
     }
 }

@@ -56,6 +56,15 @@ public class SocialAuthController {
                 request.idToken(), request.authorizationCode(), request.nonce(), request.name()));
     }
 
+    public record LinkTokenRequest(@NotBlank @Size(max = 128) String token) {
+    }
+
+    /** 소셜 로그인이 기존 계정과 겹쳐 연결이 필요한 경우, 로그인 화면에 채울 이메일과 제공자 */
+    @PostMapping("/link")
+    public ResponseEntity<SocialAuthService.PendingLinkInfo> pendingLink(@RequestBody @Valid LinkTokenRequest request) {
+        return ResponseEntity.ok(socialAuthService.pendingLink(request.token()));
+    }
+
     @PostMapping("/exchange")
     public ResponseEntity<LoginResponse> exchange(@RequestBody @Valid CodeExchangeRequest request) {
         return ResponseEntity.ok(socialAuthService.exchange(request.code()));
@@ -84,6 +93,9 @@ public class SocialAuthController {
             String loginCode = socialAuthService.loginWithAppleRedirect(idToken, code, appleName(user));
             target.path("/oauth/callback").queryParam("code", loginCode).queryParam("provider", "apple");
             if (state != null) target.queryParam("state", state);
+        } catch (SocialLinkRequiredException e) {
+            // 같은 이메일의 기존 계정: 이메일 로그인 화면으로 (로그인하면 애플 계정이 연결됨)
+            target.path("/login").queryParam("link", e.getLinkToken());
         } catch (BusinessException e) {
             target.path("/login").queryParam("error", e.getErrorCode().getMessage());
         } catch (Exception e) {

@@ -2,6 +2,8 @@ package com.untitles.domain.auth.service;
 
 import com.untitles.domain.auth.dto.response.LoginResponse;
 import com.untitles.domain.auth.dto.response.TokenResponse;
+import com.untitles.domain.auth.social.PendingLinkStore;
+import com.untitles.domain.auth.social.SocialLoginService;
 import com.untitles.domain.email.service.EmailService;
 import com.untitles.domain.user.dto.request.UserCreateRequestDTO;
 import com.untitles.domain.user.dto.request.UserLoginRequestDTO;
@@ -29,6 +31,8 @@ public class AuthService {
     private final EmailService emailService;
     private final AccountSetupService accountSetupService;
     private final RefreshTokenService refreshTokenService;
+    private final SocialLoginService socialLoginService;
+    private final PendingLinkStore pendingLinkStore;
 
     @Value("${app.signup.email-verification-required:true}")
     private boolean emailVerificationRequired;
@@ -37,7 +41,9 @@ public class AuthService {
 
     /**
      * 로그인 - 이메일 또는 (예전에 만든) 아이디 + 비밀번호
+     * 소셜 로그인 중 받은 연결 토큰이 있으면, 계정 주인임이 확인됐으므로 그 소셜 계정을 연결한다
      */
+    @Transactional
     public LoginResponse login(UserLoginRequestDTO request) {
         String id = request.getLoginId().trim();
         Users user = (id.contains("@") ? userRepository.findByEmailIgnoreCase(id) : userRepository.findByLoginId(id))
@@ -46,6 +52,10 @@ public class AuthService {
         // 소셜 로그인으로만 가입한 계정은 비밀번호가 없다
         if (!user.hasPassword() || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BadCredentialsException(LOGIN_FAILED);
+        }
+
+        if (StringUtils.hasText(request.getLinkToken())) {
+            socialLoginService.completePendingLink(user, pendingLinkStore.consume(request.getLinkToken()));
         }
 
         TokenResponse tokens = refreshTokenService.issue(user.getUserId(), user.getLoginId());

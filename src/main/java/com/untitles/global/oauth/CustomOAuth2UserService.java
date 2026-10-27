@@ -44,6 +44,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         try {
             SocialLoginService.Result result = socialLoginService.login(profile);
             return new CustomOAuth2User(result.user(), attributes);
+        } catch (com.untitles.domain.auth.social.SocialLinkRequiredException e) {
+            throw new SocialLinkRequiredAuthException(e.getLinkToken(), e.getErrorCode().getMessage());
         } catch (BusinessException e) {
             throw new OAuth2AuthenticationException(
                     new OAuth2Error(e.getErrorCode().name().toLowerCase(), e.getErrorCode().getMessage(), null));
@@ -62,5 +64,19 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             }
             default -> false;  // 네이버 등은 확인 여부를 알 수 없으므로 자동 연결에 쓰지 않는다
         };
+    }
+
+    /** 실패 처리기가 연결 토큰을 로그인 화면에 넘길 수 있도록 담아 두는 예외 */
+    public static class SocialLinkRequiredAuthException extends OAuth2AuthenticationException {
+        private final String linkToken;
+
+        public SocialLinkRequiredAuthException(String linkToken, String message) {
+            super(new OAuth2Error("social_email_in_use", message, null), message);
+            this.linkToken = linkToken;
+        }
+
+        public String getLinkToken() {
+            return linkToken;
+        }
     }
 }

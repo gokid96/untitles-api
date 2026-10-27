@@ -28,6 +28,8 @@ class AuthServiceTest {
     @Mock private EmailService emailService;
     @Mock private AccountSetupService accountSetupService;
     @Mock private RefreshTokenService refreshTokenService;
+    @Mock private com.untitles.domain.auth.social.SocialLoginService socialLoginService;
+    @Mock private com.untitles.domain.auth.social.PendingLinkStore pendingLinkStore;
 
     @InjectMocks
     private AuthService authService;
@@ -185,12 +187,12 @@ class AuthServiceTest {
         when(userRepository.findByEmailIgnoreCase("me@example.com")).thenReturn(java.util.Optional.of(user));
         when(passwordEncoder.matches("abcd1234", "hashed")).thenReturn(true);
 
-        assertThat(authService.login(new com.untitles.domain.user.dto.request.UserLoginRequestDTO("me@example.com", "abcd1234")))
+        assertThat(authService.login(new com.untitles.domain.user.dto.request.UserLoginRequestDTO("me@example.com", "abcd1234", null)))
                 .isNotNull();
 
         Users social = Users.builder().userId(4L).email("s@example.com").nickname("소셜").build();
         when(userRepository.findByEmailIgnoreCase("s@example.com")).thenReturn(java.util.Optional.of(social));
-        assertThatThrownBy(() -> authService.login(new com.untitles.domain.user.dto.request.UserLoginRequestDTO("s@example.com", "whatever1")))
+        assertThatThrownBy(() -> authService.login(new com.untitles.domain.user.dto.request.UserLoginRequestDTO("s@example.com", "whatever1", null)))
                 .isInstanceOf(org.springframework.security.authentication.BadCredentialsException.class);
     }
 }

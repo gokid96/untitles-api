@@ -67,6 +67,20 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 소셜 로그인 이메일이 기존 계정과 겹침 (409): 이메일 로그인 화면으로 넘길 수 있도록 연결 정보를 함께 보낸다
+     */
+    @ExceptionHandler(com.untitles.domain.auth.social.SocialLinkRequiredException.class)
+    public ResponseEntity<ApiResponse<java.util.Map<String, String>>> handleSocialLinkRequired(
+            com.untitles.domain.auth.social.SocialLinkRequiredException e) {
+        java.util.Map<String, String> data = new java.util.HashMap<>();
+        data.put("linkToken", e.getLinkToken());
+        data.put("email", e.getEmail());
+        data.put("provider", e.getProvider().name());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiResponse<>("error", HttpStatus.CONFLICT.value(), e.getErrorCode().getMessage(), data));
+    }
+
+    /**
      * BusinessException 처리
      */
     @ExceptionHandler(BusinessException.class)

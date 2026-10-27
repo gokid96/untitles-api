@@ -52,7 +52,8 @@ public enum ErrorCode {
     // 404 Not Found
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
     SOCIAL_LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "소셜 로그인에 실패했습니다. 다시 시도해주세요."),
-    SOCIAL_EMAIL_IN_USE(HttpStatus.CONFLICT, "이미 이 이메일로 가입된 계정이 있어요. 이메일(아이디)과 비밀번호로 로그인해주세요. 비밀번호를 잊었다면 '비밀번호 찾기'로 이메일을 확인하면 다음부터 이 방법으로도 로그인할 수 있어요."),
+    SOCIAL_EMAIL_IN_USE(HttpStatus.CONFLICT, "이미 이 이메일로 가입한 계정이 있어요. 비밀번호로 로그인하면 두 로그인 방법이 연결돼요."),
+    SOCIAL_LINK_EXPIRED(HttpStatus.BAD_REQUEST, "연결 요청이 만료됐어요. 소셜 로그인을 다시 시도해주세요."),
     SOCIAL_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, "지금은 이 로그인 방법을 사용할 수 없습니다."),
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
     FOLDER_NOT_FOUND(HttpStatus.NOT_FOUND, "폴더를 찾을 수 없습니다."),
