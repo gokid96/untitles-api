@@ -47,7 +47,7 @@ public class SocialAuthService {
     }
 
     /** 웹 리다이렉트 로그인 후 받은 일회용 코드를 토큰으로 바꾼다 */
-    @Transactional(readOnly = true)
+    @Transactional  // 리프레시 토큰을 저장하므로 쓰기 트랜잭션
     public LoginResponse exchange(String code) {
         Long userId = loginCodeStore.consume(code);
         if (userId == null) throw new BusinessException(ErrorCode.SOCIAL_LOGIN_FAILED);
