@@ -6,6 +6,7 @@
 #   .env     compose interpolation: DB_USERNAME, DB_PASSWORD, REDIS_PASSWORD,
 #            MYSQL_ROOT_PASSWORD, CLOUDFLARE_TUNNEL_TOKEN
 #   api.env  environment of the api container (no MYSQL_ROOT_PASSWORD, no tunnel token)
+#   collab.env  environment of the collab container: JWT_SECRET and COLLAB_SECRET, both equal to api.env
 name: untitles
 
 x-logging: &logging
@@ -61,6 +62,32 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    logging: *logging
+
+  collab:
+    # Realtime note editing (Hocuspocus). Caddy routes /collab to it; it reads and stores notes
+    # through the api's /internal/collab endpoints over this network, authenticated by COLLAB_SECRET.
+    build:
+      context: ./collab
+      labels:
+        app: untitles-collab
+    image: untitles-collab:local
+    restart: unless-stopped
+    # collab.env (mode 600, in .gitignore): JWT_SECRET (same as api.env) and COLLAB_SECRET (same as api.env)
+    # Optional so a host without collab.env still deploys; the web client then falls back to normal saving.
+    env_file:
+      - path: collab.env
+        required: false
+    environment:
+      API_INTERNAL_URL: http://api:8070
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:1234/ > /dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     logging: *logging
 
   mysql:

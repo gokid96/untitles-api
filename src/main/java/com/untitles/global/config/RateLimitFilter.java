@@ -42,6 +42,12 @@ public class RateLimitFilter implements Filter {
         String clientIp = getClientIp(httpRequest);
         String path = httpRequest.getRequestURI();
 
+        // 실시간 편집 서버(내부망)의 저장 요청은 한 주소에서 몰려 오므로 제한하지 않는다 (비밀값으로 보호)
+        if (path.startsWith("/internal/collab/")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         Bucket bucket = resolveBucket(clientIp, path);
 
         if (bucket.tryConsume(1)) {

@@ -8,3 +8,4 @@ build/
 .env
 api.env
 cookies.txt
+collab/
