@@ -33,6 +33,19 @@ public class SocialAuthService {
 
     @Transactional
     public LoginResponse loginWithApple(String idToken, String authorizationCode, String rawNonce, String name) {
+        return issue(appleUser(idToken, authorizationCode, rawNonce, name));
+    }
+
+    /**
+     * 웹 애플 로그인(리다이렉트 방식): 애플이 우리 서버로 보낸 결과를 확인하고, 웹에 넘길 일회용 코드를 만든다.
+     * (웹 리다이렉트는 브라우저 상태를 잃으므로 nonce 대신 웹이 state로 위조 요청을 막는다)
+     */
+    @Transactional
+    public String loginWithAppleRedirect(String idToken, String authorizationCode, String name) {
+        return loginCodeStore.issue(appleUser(idToken, authorizationCode, null, name).getUserId());
+    }
+
+    private Users appleUser(String idToken, String authorizationCode, String rawNonce, String name) {
         IdTokenVerifier.VerifiedApple verified = idTokenVerifier.verifyApple(idToken, rawNonce, name);
         SocialLoginService.Result result = socialLoginService.login(verified.profile());
 
@@ -43,7 +56,7 @@ public class SocialAuthService {
                 result.account().updateAppleToken(refreshToken, verified.clientId());
             }
         }
-        return issue(result.user());
+        return result.user();
     }
 
     /** 웹 리다이렉트 로그인 후 받은 일회용 코드를 토큰으로 바꾼다 */
