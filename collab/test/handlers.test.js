@@ -39,7 +39,8 @@ test('저장 충돌(409)이면 DB 내용을 문서에 반영하고 그 해시를
   const api = fakeApi([
     { status: 200, body: { title: 't', content: '<p>처음</p>', hash: 'h1', ydoc: null } },
     { status: 409, body: { title: '바뀐 제목', content: '<p>예전 앱이 고침</p>', hash: 'h2' } },
-    { status: 200, body: { hash: 'h3' } },
+    { status: 200, body: { hash: 'h3', title: '바뀐 제목', content: '<p>예전 앱이 고침</p>' } },
+    { status: 200, body: { hash: 'h4', title: '바뀐 제목', content: '<p>예전 앱이 고침</p>' } },
   ])
   const h = createCollabHandlers({ apiUrl: 'http://api', secret: 's', jwtSecret: 'x'.repeat(64), fetchImpl: api.fetchImpl, log: { warn() {} } })
   const doc = new Y.Doc()
@@ -51,9 +52,11 @@ test('저장 충돌(409)이면 DB 내용을 문서에 반영하고 그 해시를
   assert.match(readDocument(doc).content, /예전 앱이 고침/)
   assert.equal(readDocument(doc).title, '바뀐 제목')
 
-  await h.onStoreDocument({ documentName: 'post:1:2', document: doc })
+  // 합친 뒤 바로 다시 저장 (새 기준 h2)
   assert.equal(JSON.parse(api.calls[2].init.body).baseHash, 'h2')
-  assert.equal(api.calls[2].init.headers['X-Collab-Secret'], 's')
+  await h.onStoreDocument({ documentName: 'post:1:2', document: doc })
+  assert.equal(JSON.parse(api.calls[3].init.body).baseHash, 'h3')
+  assert.equal(api.calls[3].init.headers['X-Collab-Secret'], 's')
 })
 
 test('저장된 Y 상태가 있으면 HTML 대신 그 상태를 불러온다', async () => {
@@ -77,6 +80,7 @@ test('다른 경로의 수정과 실시간 편집 내용을 블록 단위로 합
   const api = fakeApi([
     { status: 200, body: { title: '회의록', content: '<p>하나</p><p>둘</p><p>셋</p>', hash: 'h1', ydoc: null } },
     { status: 409, body: { title: '회의록', content: '<p>하나</p><p>둘</p><p>셋 (예전 앱)</p>', hash: 'h2' } },
+    { status: 200, body: { hash: 'h3', title: '회의록 v2', content: '<p>하나 (실시간)</p><p>둘</p><p>셋 (예전 앱)</p>' } },
   ])
   const h = createCollabHandlers({ apiUrl: 'http://api', secret: 's', jwtSecret: 'x'.repeat(64), fetchImpl: api.fetchImpl, log: { warn() {} } })
   const doc = new Y.Doc()
@@ -99,4 +103,17 @@ test('같은 블록을 양쪽이 고치면 실시간 편집 쪽을 남긴다', a
   )
   assert.equal(merged.title, 't2')
   assert.equal(merged.content, '<p>a 실시간</p><p>b</p><p>c</p>')
+})
+
+test('통째로 다시 쓰지 않고 바뀐 부분만 고친다 (다른 사람의 커서 위치가 유지됨)', () => {
+  const doc = new Y.Doc()
+  fillFromHtml(doc, '제목', '<p>하나</p><p>둘</p>', 'test')
+  const first = doc.getXmlFragment('default').get(0)
+  const titleText = doc.getText('title')
+  const pos = Y.createRelativePositionFromTypeIndex(titleText, 1)
+  fillFromHtml(doc, '제목 바뀜', '<p>하나</p><p>둘 바뀜</p>', 'test')
+  assert.equal(doc.getXmlFragment('default').get(0), first) // 첫 문단은 그대로 같은 노드
+  assert.equal(Y.createAbsolutePositionFromRelativePosition(pos, doc).index, 1)
+  assert.equal(readDocument(doc).content, '<p>하나</p><p>둘 바뀜</p>')
+  assert.equal(readDocument(doc).title, '제목 바뀜')
 })

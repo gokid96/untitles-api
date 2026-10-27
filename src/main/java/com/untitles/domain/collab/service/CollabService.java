@@ -10,7 +10,6 @@ import com.untitles.domain.post.entity.Post;
 import com.untitles.domain.post.repository.PostRepository;
 import com.untitles.domain.workspace.entity.WorkspaceRole;
 import com.untitles.domain.workspace.repository.WorkspaceMemberRepository;
-import com.untitles.global.cache.EvictWorkspaceCaches;
 import com.untitles.global.exception.BusinessException;
 import com.untitles.global.exception.ErrorCode;
 import com.untitles.global.util.HtmlSanitizer;
@@ -39,6 +38,7 @@ public class CollabService {
     private final PostLinkService postLinkService;
     private final HtmlSanitizer htmlSanitizer;
     private final com.untitles.domain.collab.live.WorkspaceLiveNotifier liveNotifier;
+    private final org.springframework.cache.CacheManager cacheManager;
 
     /** 저장 시 baseHash가 현재 DB와 다를 때 (다른 경로로 바뀜) */
     public static class StaleBaseException extends RuntimeException {
@@ -76,8 +76,8 @@ public class CollabService {
         return new DocumentResponse(post.getTitle(), post.getContent(), hash, ydoc);
     }
 
+    // 입력 중 2~10초마다 불리므로 캐시는 실제로 바뀌었을 때만 비운다 (@EvictWorkspaceCaches를 쓰지 않음)
     @Transactional
-    @EvictWorkspaceCaches
     public StoreResponse store(Long workspaceId, Long postId, String title, String content, String ydocBase64, String baseHash) {
         Post post = findPost(workspaceId, postId);
         String currentHash = hashOf(post);
@@ -102,6 +102,7 @@ public class CollabService {
             post.updateContent(sanitized);
             postLinkService.syncLinks(post);
             postRepository.saveAndFlush(post);  // 버전이 올라가 예전 방식으로 편집 중인 기기는 충돌로 감지한다
+            evictCaches(workspaceId);
         }
 
         if (titleChanged) {
@@ -115,6 +116,25 @@ public class CollabService {
                 state -> state.update(ydoc, newHash),
                 () -> stateRepository.save(PostCollabState.of(postId, ydoc, newHash)));
         return new StoreResponse(newHash, post.getTitle(), post.getContent());
+    }
+
+    private void evictCaches(Long workspaceId) {
+        Runnable evict = () -> {
+            java.util.Optional.ofNullable(cacheManager.getCache("workspaceTree")).ifPresent(c -> c.evict(workspaceId));
+            java.util.Optional.ofNullable(cacheManager.getCache("publicWorkspace")).ifPresent(org.springframework.cache.Cache::clear);
+            java.util.Optional.ofNullable(cacheManager.getCache("publicPost")).ifPresent(org.springframework.cache.Cache::clear);
+        };
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            evict.run();
+                        }
+                    });
+        } else {
+            evict.run();
+        }
     }
 
     /** 매일 새벽, 영구 삭제된 노트의 편집 상태를 지운다 */

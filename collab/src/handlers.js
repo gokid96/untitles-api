@@ -37,15 +37,32 @@ function readBody(request) {
   })
 }
 
-/** HTML과 제목으로 Y 문서 내용을 채운다 (기존 내용은 지운다) */
+/** Y 텍스트를 바뀐 부분만 고친다 (다른 사람의 커서·입력이 흔들리지 않게) */
+function setTextMinimal(yText, next) {
+  const current = yText.toString()
+  if (current === next) return
+  let start = 0
+  while (start < current.length && start < next.length && current[start] === next[start]) start++
+  let endCur = current.length
+  let endNext = next.length
+  while (endCur > start && endNext > start && current[endCur - 1] === next[endNext - 1]) {
+    endCur--
+    endNext--
+  }
+  if (endCur > start) yText.delete(start, endCur - start)
+  if (endNext > start) yText.insert(start, next.slice(start, endNext))
+}
+
+/**
+ * HTML과 제목을 Y 문서에 반영한다. 통째로 지우고 다시 쓰지 않고 바뀐 부분만 고친다
+ * (편집 중인 사람의 커서와 그 순간의 입력을 지키기 위해)
+ */
 export function fillFromHtml(ydoc, title, html, origin) {
   const fragment = ydoc.getXmlFragment(FIELD)
   const yTitle = ydoc.getText('title')
   ydoc.transact(() => {
-    if (fragment.length > 0) fragment.delete(0, fragment.length)
     prosemirrorJSONToYXmlFragment(schema, htmlToDoc(html).toJSON(), fragment)
-    if (yTitle.length > 0) yTitle.delete(0, yTitle.length)
-    yTitle.insert(0, title || '')
+    setTextMinimal(yTitle, title || '')
   }, origin)
 }
 
@@ -72,6 +89,66 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
     })
     const body = res.headers.get('content-type')?.includes('json') ? await res.json() : null
     return { status: res.status, body }
+  }
+
+  /**
+   * 다른 경로(목록에서 이름 변경, 예전 앱의 저장 등)로 DB가 바뀐 내용을 실시간 편집 문서에 합친다.
+   * 마지막으로 맞춘 내용(base) 대비 양쪽 수정을 블록 단위로 합치고, 같은 곳을 고쳤으면 실시간 편집 쪽을 남긴다.
+   */
+  function absorbExternal(documentName, document, latest) {
+    if (latest.hash && latest.hash === baseHashes.get(documentName)) return false
+    const mine = readDocument(document)
+    const base = baseContents.get(documentName) ?? mine
+    const merged = mergeNote(base, mine, { title: latest.title, content: latest.content })
+    baseHashes.set(documentName, latest.hash)
+    baseContents.set(documentName, { title: latest.title, content: latest.content })
+    if (merged.title === mine.title && merged.content === mine.content) return false
+    log.warn(`[collab] ${documentName}: 다른 경로의 수정을 합칩니다`)
+    fillFromHtml(document, merged.title, merged.content, 'external')
+    return true
+  }
+
+  /**
+   * Y 문서를 DB에 저장한다. 그사이 다른 경로로 바뀌었으면(409) 합쳐서 한 번 더 저장한다.
+   */
+  async function storeDocument(documentName, document, attempt = 0) {
+    const { workspaceId, postId } = parseDocumentName(documentName)
+    const { title, content } = readDocument(document)
+    const { status, body } = await call(`/workspaces/${workspaceId}/posts/${postId}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        title,
+        content,
+        ydoc: Buffer.from(Y.encodeStateAsUpdate(document)).toString('base64'),
+        baseHash: baseHashes.get(documentName) ?? null,
+      }),
+    })
+
+    if (status === 200) {
+      baseHashes.set(documentName, body.hash)
+      baseContents.set(documentName, { title: body.title, content: body.content })
+    } else if (status === 409 && body) {
+      absorbExternal(documentName, document, body)
+      // 합친 결과를 바로 저장 (합친 결과가 실시간 편집 내용과 같아 문서 변경이 없을 때도 DB를 맞춘다)
+      if (attempt < 1) await storeDocument(documentName, document, attempt + 1)
+    } else if (status === 404) {
+      log.warn(`[collab] ${documentName}: 노트가 없어 저장하지 않습니다 (삭제됨)`)
+    } else {
+      throw new Error(`[collab] ${documentName}: 저장 실패 (${status})`)
+    }
+  }
+
+  /** 알림을 받으면 열려 있는 노트 문서에 DB의 새 내용을 바로 반영한다 */
+  async function refreshFromDb(instance, workspaceId, postId) {
+    const documentName = `post:${workspaceId}:${postId}`
+    const document = instance.documents.get(documentName)
+    if (!document || document.isLoading) return
+    const { status, body } = await call(`/workspaces/${workspaceId}/posts/${postId}`)
+    if (status !== 200 || !body) return
+    absorbExternal(documentName, document, body)
+    // 합친 결과가 DB와 다르면(같은 곳을 실시간 편집에서도 고친 경우) 바로 저장해 맞춘다
+    const now = readDocument(document)
+    if (now.title !== body.title || now.content !== body.content) await storeDocument(documentName, document)
   }
 
   return {
@@ -114,36 +191,9 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
     },
 
     async onStoreDocument({ documentName, document }) {
-      const { workspaceId, postId, channel } = parseDocumentName(documentName)
+      const { channel } = parseDocumentName(documentName)
       if (channel) return
-      const { title, content } = readDocument(document)
-      const { status, body } = await call(`/workspaces/${workspaceId}/posts/${postId}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          title,
-          content,
-          ydoc: Buffer.from(Y.encodeStateAsUpdate(document)).toString('base64'),
-          baseHash: baseHashes.get(documentName) ?? null,
-        }),
-      })
-
-      if (status === 200) {
-        baseHashes.set(documentName, body.hash)
-        baseContents.set(documentName, { title: body.title, content: body.content })
-      } else if (status === 409 && body) {
-        // 예전 방식(일반 저장)으로 그사이 바뀜: 그쪽 수정과 실시간 편집 내용을 블록 단위로 합쳐 문서에 반영하고,
-        // 새 DB 내용을 기준으로 다시 저장되게 한다 (반영으로 문서가 바뀌므로 곧 다시 저장됨)
-        log.warn(`[collab] ${documentName}: 다른 경로의 수정을 합칩니다`)
-        const base = baseContents.get(documentName) ?? { title, content }
-        const merged = mergeNote(base, { title, content }, { title: body.title, content: body.content })
-        baseHashes.set(documentName, body.hash)
-        baseContents.set(documentName, { title: body.title, content: body.content })
-        fillFromHtml(document, merged.title, merged.content, 'external')
-      } else if (status === 404) {
-        log.warn(`[collab] ${documentName}: 노트가 없어 저장하지 않습니다 (삭제됨)`)
-      } else {
-        throw new Error(`[collab] ${documentName}: 저장 실패 (${status})`)
-      }
+      await storeDocument(documentName, document)
     },
 
     /**
@@ -183,6 +233,13 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
         targetUserId: payload.targetUserId ?? null,
       })
       instance.documents.get(`workspace:${workspaceId}`)?.broadcastStateless(message)
+
+      // 사람이 일반 저장으로 노트를 바꿨으면(목록에서 이름 변경 등), 그 노트를 실시간 편집 중인 사람들에게도 바로 반영
+      // (실시간 편집 저장이 보낸 알림은 actorId가 없으므로 건너뛴다)
+      const postId = Number(payload.postId)
+      if (payload.action === 'updatePost' && payload.actorId != null && Number.isInteger(postId) && postId > 0) {
+        refreshFromDb(instance, workspaceId, postId).catch((e) => log.warn(`[collab] 노트 갱신 실패: ${e.message}`))
+      }
 
       const kickUserId = Number(payload.disconnectUserId)
       if (Number.isInteger(kickUserId) && kickUserId > 0) {

@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @H2JpaTest
-@Import({CollabService.class, PostLinkService.class, HtmlSanitizer.class, WorkspaceMemberHelper.class, com.untitles.domain.collab.live.WorkspaceLiveNotifier.class})
+@Import({CollabService.class, PostLinkService.class, HtmlSanitizer.class, WorkspaceMemberHelper.class, com.untitles.domain.collab.live.WorkspaceLiveNotifier.class, CollabServiceTest.Caches.class})
 class CollabServiceTest {
 
     @Autowired CollabService collabService;
@@ -118,5 +118,13 @@ class CollabServiceTest {
         assertThatThrownBy(() -> collabService.store(ws.getWorkspaceId(), post.getPostId(), "제목", "<p>실시간</p>", YDOC, loaded.hash()))
                 .isInstanceOf(CollabService.StaleBaseException.class)
                 .satisfies(e -> assertThat(((CollabService.StaleBaseException) e).getCurrent().content()).contains("예전 앱에서 고침"));
+    }
+
+    @org.springframework.boot.test.context.TestConfiguration
+    static class Caches {
+        @org.springframework.context.annotation.Bean
+        org.springframework.cache.CacheManager cacheManager() {
+            return new org.springframework.cache.concurrent.ConcurrentMapCacheManager("workspaceTree", "publicWorkspace", "publicPost");
+        }
     }
 }
