@@ -72,3 +72,31 @@ test('토큰이 없거나 틀리면 접속을 거부한다', async () => {
   const h = createCollabHandlers({ apiUrl: 'http://api', secret: 's', jwtSecret: 'x'.repeat(64), fetchImpl: async () => { throw new Error('호출되면 안 됨') } })
   await assert.rejects(h.onAuthenticate({ token: 'bad', documentName: 'post:1:2', connectionConfig: {} }))
 })
+
+test('다른 경로의 수정과 실시간 편집 내용을 블록 단위로 합친다 (어느 쪽 입력도 잃지 않음)', async () => {
+  const api = fakeApi([
+    { status: 200, body: { title: '회의록', content: '<p>하나</p><p>둘</p><p>셋</p>', hash: 'h1', ydoc: null } },
+    { status: 409, body: { title: '회의록', content: '<p>하나</p><p>둘</p><p>셋 (예전 앱)</p>', hash: 'h2' } },
+  ])
+  const h = createCollabHandlers({ apiUrl: 'http://api', secret: 's', jwtSecret: 'x'.repeat(64), fetchImpl: api.fetchImpl, log: { warn() {} } })
+  const doc = new Y.Doc()
+  await h.onLoadDocument({ documentName: 'post:1:2', document: doc })
+  // 실시간 편집으로 첫 블록을 고침
+  fillFromHtml(doc, '회의록 v2', '<p>하나 (실시간)</p><p>둘</p><p>셋</p>', 'test')
+
+  await h.onStoreDocument({ documentName: 'post:1:2', document: doc })
+  const { title, content } = readDocument(doc)
+  assert.equal(title, '회의록 v2')
+  assert.equal(content, '<p>하나 (실시간)</p><p>둘</p><p>셋 (예전 앱)</p>')
+})
+
+test('같은 블록을 양쪽이 고치면 실시간 편집 쪽을 남긴다', async () => {
+  const { mergeNote } = await import('../src/merge.js')
+  const merged = mergeNote(
+    { title: 't', content: '<p>a</p><p>b</p>' },
+    { title: 't', content: '<p>a 실시간</p><p>b</p>' },
+    { title: 't2', content: '<p>a 예전앱</p><p>b</p><p>c</p>' },
+  )
+  assert.equal(merged.title, 't2')
+  assert.equal(merged.content, '<p>a 실시간</p><p>b</p><p>c</p>')
+})
