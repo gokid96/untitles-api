@@ -26,6 +26,11 @@ public class ApiResponseWrapper implements ResponseBodyAdvice<Object> {
                                   ServerHttpRequest request,
                                   ServerHttpResponse response) {
 
+        // 실시간 편집 서버 전용 내부 API는 감싸지 않는다 (편집 서버가 본문을 그대로 읽음)
+        if (request.getURI().getPath().startsWith("/internal/")) {
+            return body;
+        }
+
         // 이미 ApiResponse면 그대로 반환
         if (body instanceof ApiResponse) {
             return body;

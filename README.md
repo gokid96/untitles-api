@@ -221,6 +221,25 @@ docker compose -f docker-compose.prod.yml exec -T caddy wget -qO- http://api:807
 docker compose -f docker-compose.prod.yml logs -f api
 ```
 
+### Realtime editing (collab)
+
+The `collab` container runs the Hocuspocus WebSocket server for realtime note editing. Caddy routes `/collab` to it, and it reads and stores notes through the api's `/internal/collab` endpoints (blocked at Caddy, authenticated by a shared secret). Without it the web and app fall back to normal saving with automatic merge.
+
+One-time setup on the host (the secret never leaves the server):
+
+```bash
+cd ~/untitle
+S=$(openssl rand -hex 32)
+echo "COLLAB_SECRET=$S" >> api.env
+{ grep '^JWT_SECRET=' api.env; echo "COLLAB_SECRET=$S"; } > collab.env
+chmod 600 collab.env
+unset S
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec caddy caddy reload --config /etc/caddy/Caddyfile
+```
+
+The web client connects to `VITE_COLLAB_URL` (`wss://api.untitles.net/collab`).
+
 ### Rollback
 
 Check out an earlier commit and rebuild:
