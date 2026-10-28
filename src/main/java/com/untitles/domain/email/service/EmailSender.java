@@ -35,6 +35,10 @@ public class EmailSender {
     @Value("${app.mail.from:noreply@untitles.net}")
     private String fromEmail;
 
+    /** 받은편지함에 보이는 보낸 사람 이름 */
+    @Value("${app.mail.from-name:Untitles}")
+    private String fromName;
+
     /**
      * 메일 발송 수단이 설정돼 있는지 (log면 실제로 보내지 않음)
      */
@@ -101,6 +105,15 @@ public class EmailSender {
         }
     }
 
+    /** "Untitles <noreply@untitles.net>" (이름에 한글이 있어도 되도록 인코딩) */
+    private String fromHeader() {
+        try {
+            return new jakarta.mail.internet.InternetAddress(fromEmail, fromName, "UTF-8").toString();
+        } catch (java.io.UnsupportedEncodingException e) {
+            return fromEmail;
+        }
+    }
+
     private void sendSmtp(String toEmail, String subject, String htmlBody) throws Exception {
         JavaMailSender sender = javaMailSender.getIfAvailable();
         if (sender == null) {
@@ -108,7 +121,7 @@ public class EmailSender {
         }
         MimeMessage message = sender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
-        helper.setFrom(fromEmail);
+        helper.setFrom(fromEmail, fromName);
         helper.setTo(toEmail);
         helper.setSubject(subject);
         helper.setText(htmlBody, true);
@@ -118,7 +131,7 @@ public class EmailSender {
     private void sendSes(String toEmail, String subject, String htmlBody) {
         SesV2Client client = sesV2Client.getObject();
         client.sendEmail(SendEmailRequest.builder()
-                .fromEmailAddress(fromEmail)
+                .fromEmailAddress(fromHeader())
                 .destination(Destination.builder().toAddresses(toEmail).build())
                 .content(EmailContent.builder()
                         .simple(Message.builder()

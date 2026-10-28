@@ -133,6 +133,7 @@ app:
     # 메일 발송 수단: log(발송하지 않고 로그만, 기본) | smtp | ses
     provider: ${MAIL_PROVIDER:log}
     from: ${MAIL_FROM:noreply@untitles.net}
+    from-name: ${MAIL_FROM_NAME:Untitles}
   oauth2:
     redirect-uri: http://localhost:5173
   signup:
