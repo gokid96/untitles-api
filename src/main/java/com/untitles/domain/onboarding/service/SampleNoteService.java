@@ -73,7 +73,7 @@ public class SampleNoteService {
                 <li data-type="taskItem" data-checked="true"><p>예시 노트 열어 보기</p></li>
                 <li data-type="taskItem" data-checked="false"><p>사이드바 위쪽의 <strong>새 노트</strong> 버튼(종이에 + 모양)으로 노트 만들기</p></li>
                 <li data-type="taskItem" data-checked="false"><p>본문에서 <code>[[</code> 를 입력해 다른 노트 연결하기</p></li>
-                <li data-type="taskItem" data-checked="false"><p>프로필의 내 정보에서 이메일 등록하기 (비밀번호를 잊었을 때 필요해요)</p></li>
+                <li data-type="taskItem" data-checked="false"><p>새 워크스페이스를 만들어 함께 쓸 사람 초대하기 (같은 노트를 동시에 편집할 수 있어요)</p></li>
                 </ul>
                 <h2>더 알아보기</h2>
                 <ul>
