@@ -37,14 +37,6 @@ public class Users {
     @Builder.Default
     private boolean emailVerified = false;
 
-    // OAuth
-    @Enumerated(EnumType.STRING)
-    @Column(name = "provider", length = 20)
-    private AuthProvider provider;
-
-    @Column(name = "provider_id", length = 100)
-    private String providerId;
-
     @Column(name = "profile_image", length = 500)
     private String profileImage;
 
@@ -86,11 +78,6 @@ public class Users {
 
     public void updateNickname(String nickname) {
         this.nickname = nickname;
-    }
-
-    public void updateOAuthInfo(AuthProvider provider, String providerId) {
-        this.provider = provider;
-        this.providerId = providerId;
     }
 
     // 정적 팩토리 메서드
