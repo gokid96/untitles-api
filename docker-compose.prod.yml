@@ -100,6 +100,10 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is not set}
     volumes:
       - mysql-data:/var/lib/mysql
+    # For DB tools (DBeaver etc.) through an SSH tunnel only: bound to the host's loopback,
+    # so it is never reachable from outside the server. Connect via SSH, then 127.0.0.1:13306.
+    ports:
+      - "127.0.0.1:13306:3306"
     healthcheck:
       # Logs in as the app user over TCP. The temporary server of the first-time init skips
       # networking, so it never counts as healthy. $$ is expanded by the shell in the container.
