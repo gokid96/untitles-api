@@ -75,4 +75,9 @@ public interface FolderRepository extends JpaRepository<Folder, Long> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE Folder f SET f.user = null WHERE f.user.userId = :userId")
     void clearUser(@Param("userId") Long userId);
+
+    /** 워크스페이스별 폴더 수 (휴지통 제외). [workspaceId, count] */
+    @org.springframework.data.jpa.repository.Query("SELECT f.workspace.workspaceId, COUNT(f) FROM Folder f WHERE f.workspace.workspaceId IN :ids GROUP BY f.workspace.workspaceId")
+    java.util.List<Object[]> countByWorkspaceIds(@org.springframework.data.repository.query.Param("ids") java.util.Collection<Long> ids);
+
 }

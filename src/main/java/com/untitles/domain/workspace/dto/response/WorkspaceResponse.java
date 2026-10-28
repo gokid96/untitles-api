@@ -29,18 +29,23 @@ public record WorkspaceResponse(
 
         LocalDateTime createdAt
 ) {
-    public static WorkspaceResponse from(Workspace workspace, WorkspaceRole myRole) {
+    /** 멤버·폴더·노트 수 (노트 본문을 읽지 않으려고 따로 센 값) */
+    public record Counts(int members, int folders, int posts) {
+        public static final Counts EMPTY = new Counts(0, 0, 0);
+    }
+
+    public static WorkspaceResponse from(Workspace workspace, WorkspaceRole myRole, Counts counts) {
         return WorkspaceResponse.builder()
                 .workspaceId(workspace.getWorkspaceId())
                 .name(workspace.getName())
                 .description(workspace.getDescription())
                 .type(workspace.getType())
                 .myRole(myRole)
-                .memberCount(workspace.getMembers().size())
+                .memberCount(counts.members())
                 .memberLimit(5)
-                .folderCount(workspace.getFolders().size())
+                .folderCount(counts.folders())
                 .folderLimit(20)
-                .postCount(workspace.getPosts().size())
+                .postCount(counts.posts())
                 .postLimit(50)
                 .createdAt(workspace.getCreatedAt())
                 .build();

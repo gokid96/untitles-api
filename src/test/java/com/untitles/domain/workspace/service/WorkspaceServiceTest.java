@@ -174,8 +174,7 @@ class WorkspaceServiceTest {
         @DisplayName("성공")
         void success() {
             // given
-            when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
-            when(memberRepository.findAllByUserWithWorkspaceAndMembers(testUser)).thenReturn(List.of(ownerMember));
+            when(memberRepository.findAllWithWorkspaceByUserId(1L)).thenReturn(List.of(ownerMember));
 
             // when
             List<WorkspaceResponse> responses = workspaceService.getMyWorkspaces(1L);

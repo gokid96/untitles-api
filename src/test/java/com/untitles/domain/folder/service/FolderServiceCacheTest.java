@@ -46,15 +46,15 @@ class FolderServiceCacheTest {
     @Test
     @DisplayName("트리가 캐시돼 있어도 멤버가 아니면 조회할 수 없다")
     void cachedTreeStillChecksMembership() {
-        when(folderRepository.findByWorkspaceWorkspaceIdAndParentIsNull(1L)).thenReturn(List.of());
-        when(postRepository.findByWorkspaceWorkspaceIdAndFolderIsNull(1L)).thenReturn(List.of());
+        when(folderRepository.findAllByWorkspaceWorkspaceId(1L)).thenReturn(List.of());
+        when(postRepository.findTreeRowsByWorkspaceId(1L)).thenReturn(List.of());
         when(workspaceMemberHelper.getMemberOrThrow(2L, 1L))
                 .thenThrow(new BusinessException(ErrorCode.ACCESS_DENIED));
 
         // 멤버(1번)가 먼저 조회해서 캐시에 저장
         folderService.getRootFolders(1L, 1L);
         folderService.getRootFolders(1L, 1L);
-        verify(folderRepository, times(1)).findByWorkspaceWorkspaceIdAndParentIsNull(1L);
+        verify(folderRepository, times(1)).findAllByWorkspaceWorkspaceId(1L);
 
         // 멤버가 아닌 사용자(2번)는 캐시가 있어도 거부
         assertThatThrownBy(() -> folderService.getRootFolders(2L, 1L))

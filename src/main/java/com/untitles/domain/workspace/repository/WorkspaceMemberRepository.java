@@ -48,4 +48,13 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
     @Query("DELETE FROM WorkspaceMember wm WHERE wm.user.userId = :userId")
     void deleteAllByUserId(@Param("userId") Long userId);
 
+
+    /** 워크스페이스별 멤버 수. [workspaceId, count] */
+    @Query("SELECT m.workspace.workspaceId, COUNT(m) FROM WorkspaceMember m WHERE m.workspace.workspaceId IN :ids GROUP BY m.workspace.workspaceId")
+    List<Object[]> countByWorkspaceIds(@Param("ids") java.util.Collection<Long> ids);
+
+    /** 내 멤버십과 워크스페이스 (멤버·폴더·노트 컬렉션은 불러오지 않음) */
+    @Query("SELECT m FROM WorkspaceMember m JOIN FETCH m.workspace WHERE m.user.userId = :userId")
+    List<WorkspaceMember> findAllWithWorkspaceByUserId(@Param("userId") Long userId);
+
 }

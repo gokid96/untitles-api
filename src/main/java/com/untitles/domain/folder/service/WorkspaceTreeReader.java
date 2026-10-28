@@ -24,22 +24,53 @@ public class WorkspaceTreeReader {
     private final FolderRepository folderRepository;
     private final PostRepository postRepository;
 
+    /**
+     * 폴더 전체와 노트 목록(본문 제외)을 쿼리 두 번으로 읽어 메모리에서 트리를 만든다.
+     * (폴더마다 하위 폴더·노트를 따로 읽거나 노트 본문까지 읽지 않도록)
+     */
     @Cacheable(value = "workspaceTree", key = "#workspaceId")
     public WorkspaceTreeResponseDTO getTree(Long workspaceId) {
-        List<FolderResponseDTO> folders = folderRepository
-                .findByWorkspaceWorkspaceIdAndParentIsNull(workspaceId)
-                .stream()
-                .map(FolderResponseDTO::from)
-                .toList();
+        List<com.untitles.domain.folder.entity.Folder> all = folderRepository.findAllByWorkspaceWorkspaceId(workspaceId);
+        java.util.Map<Long, FolderResponseDTO> byId = new java.util.LinkedHashMap<>();
+        all.stream()
+                .sorted(java.util.Comparator.comparing(com.untitles.domain.folder.entity.Folder::getFolderId))
+                .forEach(f -> byId.put(f.getFolderId(), FolderResponseDTO.builder()
+                        .folderId(f.getFolderId())
+                        .name(f.getName())
+                        .parentId(f.getParent() != null ? f.getParent().getFolderId() : null)
+                        .createdAt(f.getCreatedAt())
+                        .updatedAt(f.getUpdatedAt())
+                        .children(new java.util.ArrayList<>())
+                        .posts(new java.util.ArrayList<>())
+                        .build()));
 
-        List<PostSimpleDTO> rootPosts = postRepository
-                .findByWorkspaceWorkspaceIdAndFolderIsNull(workspaceId)
-                .stream()
-                .map(PostSimpleDTO::from)
-                .toList();
+        List<FolderResponseDTO> roots = new java.util.ArrayList<>();
+        for (FolderResponseDTO folder : byId.values()) {
+            FolderResponseDTO parent = folder.getParentId() == null ? null : byId.get(folder.getParentId());
+            if (parent != null) parent.getChildren().add(folder);
+            else if (folder.getParentId() == null) roots.add(folder);
+            // 부모가 휴지통에 있는 폴더는 목록에 보이지 않는다 (기존과 같음)
+        }
+
+        List<PostSimpleDTO> rootPosts = new java.util.ArrayList<>();
+        for (Object[] row : postRepository.findTreeRowsByWorkspaceId(workspaceId)) {
+            PostSimpleDTO post = PostSimpleDTO.builder()
+                    .postId((Long) row[0])
+                    .title((String) row[1])
+                    .createdAt((java.time.LocalDateTime) row[2])
+                    .updatedAt((java.time.LocalDateTime) row[3])
+                    .build();
+            Long folderId = (Long) row[4];
+            if (folderId == null) {
+                rootPosts.add(post);
+            } else {
+                FolderResponseDTO folder = byId.get(folderId);
+                if (folder != null) folder.getPosts().add(post);
+            }
+        }
 
         return WorkspaceTreeResponseDTO.builder()
-                .folders(folders)
+                .folders(roots)
                 .rootPosts(rootPosts)
                 .build();
     }

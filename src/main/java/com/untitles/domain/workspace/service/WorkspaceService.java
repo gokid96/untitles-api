@@ -62,26 +62,50 @@ public class WorkspaceService {
         WorkspaceMember owner = WorkspaceMember.createOwner(workspace, user);
         workspaceMemberRepository.save(owner);
 
-        return WorkspaceResponse.from(workspace, WorkspaceRole.OWNER);
+        return toResponse(workspace, WorkspaceRole.OWNER);
     }
 
-    // 내 워크스페이스 목록
+    // 내 워크스페이스 목록 (개수는 따로 세어 노트 본문을 읽지 않는다)
     public List<WorkspaceResponse> getMyWorkspaces(Long userId) {
-        Users user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-        return workspaceMemberRepository.findAllByUserWithWorkspaceAndMembers(user).stream()
-                .map(member -> WorkspaceResponse.from(
-                        member.getWorkspace(),
-                        member.getRole()
-                ))
+        List<WorkspaceMember> memberships = workspaceMemberRepository.findAllWithWorkspaceByUserId(userId);
+        java.util.Map<Long, WorkspaceResponse.Counts> counts = countsOf(
+                memberships.stream().map(m -> m.getWorkspace().getWorkspaceId()).toList());
+        return memberships.stream()
+                .map(m -> WorkspaceResponse.from(m.getWorkspace(), m.getRole(),
+                        counts.getOrDefault(m.getWorkspace().getWorkspaceId(), WorkspaceResponse.Counts.EMPTY)))
                 .toList();
+    }
+
+    private WorkspaceResponse toResponse(Workspace workspace, WorkspaceRole role) {
+        return WorkspaceResponse.from(workspace, role,
+                countsOf(List.of(workspace.getWorkspaceId())).getOrDefault(workspace.getWorkspaceId(), WorkspaceResponse.Counts.EMPTY));
+    }
+
+    private java.util.Map<Long, WorkspaceResponse.Counts> countsOf(java.util.Collection<Long> workspaceIds) {
+        if (workspaceIds.isEmpty()) return java.util.Map.of();
+        java.util.Map<Long, Long> members = toMap(workspaceMemberRepository.countByWorkspaceIds(workspaceIds));
+        java.util.Map<Long, Long> folders = toMap(folderRepository.countByWorkspaceIds(workspaceIds));
+        java.util.Map<Long, Long> posts = toMap(postRepository.countByWorkspaceIds(workspaceIds));
+        java.util.Map<Long, WorkspaceResponse.Counts> result = new java.util.HashMap<>();
+        for (Long id : workspaceIds) {
+            result.put(id, new WorkspaceResponse.Counts(
+                    members.getOrDefault(id, 0L).intValue(),
+                    folders.getOrDefault(id, 0L).intValue(),
+                    posts.getOrDefault(id, 0L).intValue()));
+        }
+        return result;
+    }
+
+    private static java.util.Map<Long, Long> toMap(List<Object[]> rows) {
+        java.util.Map<Long, Long> map = new java.util.HashMap<>();
+        for (Object[] row : rows) map.put((Long) row[0], (Long) row[1]);
+        return map;
     }
 
     // 워크스페이스 상세
     public WorkspaceResponse getWorkspace(Long userId, Long workspaceId) {
         WorkspaceMember member = workspaceMemberHelper.getMemberOrThrow(userId, workspaceId);
-        return WorkspaceResponse.from(member.getWorkspace(), member.getRole());
+        return toResponse(member.getWorkspace(), member.getRole());
     }
 
     // 워크스페이스 수정 (OWNER, ADMIN만)
@@ -96,7 +120,7 @@ public class WorkspaceService {
         if (request.description() != null) workspace.updateDescription(request.description());
 
         workspaceRepository.save(workspace);
-        return WorkspaceResponse.from(workspace, member.getRole());
+        return toResponse(workspace, member.getRole());
     }
 
     // 워크스페이스 삭제 (OWNER만)

@@ -90,4 +90,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query(value = "UPDATE post SET content = REPLACE(content, '<li data-checked=', '<li data-type=\"taskItem\" data-checked=') " +
             "WHERE content LIKE '%<li data-checked=%'", nativeQuery = true)
     int repairChecklistItems();
+
+    /** 워크스페이스별 노트 수 (휴지통 제외). 본문을 읽지 않고 개수만 센다. [workspaceId, count] */
+    @org.springframework.data.jpa.repository.Query("SELECT p.workspace.workspaceId, COUNT(p) FROM Post p WHERE p.workspace.workspaceId IN :ids GROUP BY p.workspace.workspaceId")
+    java.util.List<Object[]> countByWorkspaceIds(@org.springframework.data.repository.query.Param("ids") java.util.Collection<Long> ids);
+
+
+    /** 사이드바 목록용: 본문 없이 노트 ID·제목·날짜·폴더만 (휴지통 제외) */
+    @org.springframework.data.jpa.repository.Query("SELECT p.postId, p.title, p.createdAt, p.updatedAt, f.folderId FROM Post p LEFT JOIN p.folder f "
+            + "WHERE p.workspace.workspaceId = :workspaceId ORDER BY p.postId")
+    java.util.List<Object[]> findTreeRowsByWorkspaceId(@org.springframework.data.repository.query.Param("workspaceId") Long workspaceId);
 }
