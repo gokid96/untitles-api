@@ -63,6 +63,7 @@ public class GlobalExceptionHandler {
         }
 
         log.error("Transaction error: ", e);
+        io.sentry.Sentry.captureException(e);
         return createErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
     }
 
@@ -96,6 +97,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException e) {
         log.error("IllegalArgumentException: ", e);
+        io.sentry.Sentry.captureException(e);
         return createErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
     }
 
@@ -105,6 +107,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalStateException(IllegalStateException e) {
         log.error("IllegalStateException: ", e);
+        io.sentry.Sentry.captureException(e);
         return createErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
     }
 
@@ -192,6 +195,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
         log.error("Unexpected error: ", e);
+        // 여기서 처리하면 Sentry가 자동으로 못 보므로 직접 보낸다 (SENTRY_DSN이 없으면 아무것도 안 함)
+        io.sentry.Sentry.captureException(e);
         return createErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
     }
 

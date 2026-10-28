@@ -1,7 +1,19 @@
 // Untitles 실시간 노트 편집 서버 (Hocuspocus)
 // - 접속: wss://<API 호스트>/collab, 문서 이름은 "post:<워크스페이스ID>:<노트ID>", 토큰은 API의 액세스 토큰
 // - 권한·저장은 API의 내부 엔드포인트(/internal/collab)를 통해 처리한다
+import * as Sentry from '@sentry/node'
 import { Server } from '@hocuspocus/server'
+
+// 오류 추적 (SENTRY_DSN이 있을 때만). 노트 내용은 보내지 않는다
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.SENTRY_ENVIRONMENT || 'production',
+    release: process.env.SENTRY_RELEASE || undefined,
+    sendDefaultPii: false,
+    tracesSampleRate: 0,
+  })
+}
 import { createCollabHandlers } from './handlers.js'
 
 const required = (name) => {
@@ -17,6 +29,7 @@ const handlers = createCollabHandlers({
   apiUrl: process.env.API_INTERNAL_URL || 'http://api:8070',
   secret: required('COLLAB_SECRET'),
   jwtSecret: required('JWT_SECRET'),
+  onError: (error) => Sentry.captureException(error),
 })
 
 const server = new Server({

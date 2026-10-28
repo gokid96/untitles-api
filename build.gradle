@@ -35,6 +35,8 @@ dependencies {
     implementation 'software.amazon.awssdk:sesv2'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
+    // 오류 추적 (SENTRY_DSN이 있을 때만 켜짐)
+    implementation 'io.sentry:sentry-spring-boot-starter-jakarta:8.58.0'
     
     // XSS 방지를 위한 HTML Sanitizer
     implementation 'org.owasp.antisamy:antisamy:1.7.5'

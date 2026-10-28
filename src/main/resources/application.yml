@@ -138,3 +138,14 @@ app:
   signup:
     # 회원가입 시 이메일 인증 필수 여부. 메일 발송 수단을 붙이면 EMAIL_VERIFICATION_REQUIRED=true로 켠다
     email-verification-required: ${EMAIL_VERIFICATION_REQUIRED:false}
+
+# 오류 추적 (Sentry). SENTRY_DSN이 비어 있으면 꺼진다
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:production}
+  release: ${SENTRY_RELEASE:}
+  send-default-pii: false        # IP·쿠키·요청 본문(노트 내용)을 보내지 않는다
+  max-request-body-size: none
+  traces-sample-rate: 0          # 성능 측정은 쓰지 않고 오류만
+  ignored-exceptions-for-type:
+    - com.untitles.global.exception.BusinessException   # 사용자가 잘못 입력한 경우 등 정상적인 거절

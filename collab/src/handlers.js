@@ -75,7 +75,7 @@ export function readDocument(ydoc) {
   }
 }
 
-export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fetch, log = console }) {
+export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fetch, log = console, onError }) {
   const key = new TextEncoder().encode(jwtSecret)
   // 문서별로 마지막으로 DB와 맞춘 해시 (다른 경로로 바뀐 걸 감지하는 데 쓴다)
   const baseHashes = new Map()
@@ -140,7 +140,9 @@ export function createCollabHandlers({ apiUrl, secret, jwtSecret, fetchImpl = fe
       // 편집 중인 사람들에게 저장이 안 되고 있음을 알린다 (화면에 "저장됨"으로 계속 보이지 않게)
       storeFailed.add(documentName)
       notifyClients(document, { type: 'store-error', reason: status === 400 ? 'too-large' : 'failed' })
-      throw new Error(`[collab] ${documentName}: 저장 실패 (${status})`)
+      const error = new Error(`[collab] ${documentName}: 저장 실패 (${status})`)
+      onError?.(error)
+      throw error
     }
   }
 
