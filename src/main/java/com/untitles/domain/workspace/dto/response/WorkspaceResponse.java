@@ -27,6 +27,8 @@ public record WorkspaceResponse(
         int postCount,
         int postLimit,
 
+        boolean unlimitedContent,
+
         LocalDateTime createdAt
 ) {
     /** 멤버·폴더·노트 수 (노트 본문을 읽지 않으려고 따로 센 값) */
@@ -34,7 +36,7 @@ public record WorkspaceResponse(
         public static final Counts EMPTY = new Counts(0, 0, 0);
     }
 
-    public static WorkspaceResponse from(Workspace workspace, WorkspaceRole myRole, Counts counts) {
+    public static WorkspaceResponse from(Workspace workspace, WorkspaceRole myRole, Counts counts, boolean unlimitedContent) {
         return WorkspaceResponse.builder()
                 .workspaceId(workspace.getWorkspaceId())
                 .name(workspace.getName())
@@ -47,6 +49,7 @@ public record WorkspaceResponse(
                 .folderLimit(20)
                 .postCount(counts.posts())
                 .postLimit(50)
+                .unlimitedContent(unlimitedContent)
                 .createdAt(workspace.getCreatedAt())
                 .build();
     }

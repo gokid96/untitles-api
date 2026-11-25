@@ -70,15 +70,21 @@ public class WorkspaceService {
         List<WorkspaceMember> memberships = workspaceMemberRepository.findAllWithWorkspaceByUserId(userId);
         java.util.Map<Long, WorkspaceResponse.Counts> counts = countsOf(
                 memberships.stream().map(m -> m.getWorkspace().getWorkspaceId()).toList());
+        java.util.Set<Long> unlimitedIds = memberships.isEmpty() ? java.util.Set.of()
+                : workspaceMemberRepository.findWorkspaceIdsByOwnerPlan(
+                        memberships.stream().map(m -> m.getWorkspace().getWorkspaceId()).toList(),
+                        WorkspaceRole.OWNER, com.untitles.domain.user.entity.UserPlan.PRO);
         return memberships.stream()
                 .map(m -> WorkspaceResponse.from(m.getWorkspace(), m.getRole(),
-                        counts.getOrDefault(m.getWorkspace().getWorkspaceId(), WorkspaceResponse.Counts.EMPTY)))
+                        counts.getOrDefault(m.getWorkspace().getWorkspaceId(), WorkspaceResponse.Counts.EMPTY),
+                        unlimitedIds.contains(m.getWorkspace().getWorkspaceId())))
                 .toList();
     }
 
     private WorkspaceResponse toResponse(Workspace workspace, WorkspaceRole role) {
         return WorkspaceResponse.from(workspace, role,
-                countsOf(List.of(workspace.getWorkspaceId())).getOrDefault(workspace.getWorkspaceId(), WorkspaceResponse.Counts.EMPTY));
+                countsOf(List.of(workspace.getWorkspaceId())).getOrDefault(workspace.getWorkspaceId(), WorkspaceResponse.Counts.EMPTY),
+                workspaceMemberHelper.hasUnlimitedContent(workspace.getWorkspaceId()));
     }
 
     private java.util.Map<Long, WorkspaceResponse.Counts> countsOf(java.util.Collection<Long> workspaceIds) {

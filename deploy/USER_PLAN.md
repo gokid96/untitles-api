@@ -5,10 +5,11 @@ those limits for workspaces owned by that user. A PRO member of a FREE-owned
 workspace does not unlock it. Membership and write permissions remain required.
 Workspace count, members, uploads and rate limits are unchanged.
 
-The existing workspace response still reports folderLimit=20 and postLimit=50
-for compatibility with released clients. Those fields are informational in the
-current client; the backend enforces the effective entitlement. Unlimited display
-can be added in a future client release. No public API can change a user's plan.
+The workspace response adds unlimitedContent (owner entitlement) and keeps
+folderLimit=20 and postLimit=50 for compatibility with released clients.
+Updated clients display infinity when unlimitedContent is true; old servers
+without the field keep the normal count/limit display. No public API can change
+a user's plan. No payment UI or purchase flow is included.
 
 ## Deployment
 

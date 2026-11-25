@@ -26,6 +26,9 @@ class WorkspacePlanTest {
                 freeWorkspace.getWorkspaceId(), WorkspaceRole.OWNER, UserPlan.PRO)).isFalse();
         assertThat(members.existsByWorkspaceWorkspaceIdAndRoleAndUserPlan(
                 proWorkspace.getWorkspaceId(), WorkspaceRole.OWNER, UserPlan.PRO)).isTrue();
+        assertThat(members.findWorkspaceIdsByOwnerPlan(
+                java.util.List.of(freeWorkspace.getWorkspaceId(), proWorkspace.getWorkspaceId()),
+                WorkspaceRole.OWNER, UserPlan.PRO)).containsExactly(proWorkspace.getWorkspaceId());
         assertThat(members.existsByWorkspaceWorkspaceIdAndRoleAndUserPlan(
                 -1L, WorkspaceRole.OWNER, UserPlan.PRO)).isFalse();
     }

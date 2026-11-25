@@ -18,6 +18,11 @@ public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember
     boolean existsByWorkspaceWorkspaceIdAndRoleAndUserPlan(Long workspaceId, WorkspaceRole role,
             com.untitles.domain.user.entity.UserPlan plan);
 
+    @Query("SELECT DISTINCT m.workspace.workspaceId FROM WorkspaceMember m " +
+            "WHERE m.workspace.workspaceId IN :ids AND m.role = :role AND m.user.plan = :plan")
+    java.util.Set<Long> findWorkspaceIdsByOwnerPlan(@Param("ids") java.util.Collection<Long> ids,
+            @Param("role") WorkspaceRole role, @Param("plan") com.untitles.domain.user.entity.UserPlan plan);
+
     List<WorkspaceMember> findAllByWorkspace(Workspace workspace);
 
     boolean existsByWorkspaceAndUser(Workspace workspace, Users user);
