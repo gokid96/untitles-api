@@ -58,7 +58,7 @@ public class PostService {
 
         workspaceRepository.findByIdForUpdate(workspaceId);  // 동시 생성으로 개수 제한을 넘지 않게
         long postCount = postRepository.countByWorkspace(workspace);
-        if (postCount >= 50) {
+        if (postCount >= 50 && !workspaceMemberHelper.hasUnlimitedContent(workspaceId)) {
             throw new BusinessException(ErrorCode.POST_LIMIT_EXCEEDED);
         }
 

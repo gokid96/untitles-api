@@ -14,6 +14,12 @@ public class WorkspaceMemberHelper {
 
     private final WorkspaceMemberRepository workspaceMemberRepository;
 
+    /** Content entitlement belongs to the workspace owner, not the requesting member. */
+    public boolean hasUnlimitedContent(Long workspaceId) {
+        return workspaceMemberRepository.existsByWorkspaceWorkspaceIdAndRoleAndUserPlan(
+                workspaceId, WorkspaceRole.OWNER, com.untitles.domain.user.entity.UserPlan.PRO);
+    }
+
     /**
      * 워크스페이스 멤버 조회 - 멤버가 아니면 예외
      */

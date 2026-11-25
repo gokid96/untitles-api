@@ -45,7 +45,7 @@ public class FolderService {
 
         workspaceRepository.findByIdForUpdate(workspace.getWorkspaceId());  // 동시 생성으로 개수 제한을 넘지 않게
         long folderCount = folderRepository.countByWorkspace(workspace);
-        if (folderCount >= 20) {
+        if (folderCount >= 20 && !workspaceMemberHelper.hasUnlimitedContent(workspaceId)) {
             throw new BusinessException(ErrorCode.FOLDER_LIMIT_EXCEEDED);
         }
 

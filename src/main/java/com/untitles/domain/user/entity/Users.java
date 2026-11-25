@@ -28,6 +28,11 @@ public class Users {
     @Column(name = "login_id", unique = true, length = 50)
     private String loginId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20, columnDefinition = "varchar(20) default 'FREE'")
+    @Builder.Default
+    private UserPlan plan = UserPlan.FREE;
+
     @Column(length = 255)
     private String password;  // 소셜 로그인으로만 가입한 계정은 null
 

@@ -15,6 +15,9 @@ import java.util.Optional;
 
 public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember, Long> {
 
+    boolean existsByWorkspaceWorkspaceIdAndRoleAndUserPlan(Long workspaceId, WorkspaceRole role,
+            com.untitles.domain.user.entity.UserPlan plan);
+
     List<WorkspaceMember> findAllByWorkspace(Workspace workspace);
 
     boolean existsByWorkspaceAndUser(Workspace workspace, Users user);
